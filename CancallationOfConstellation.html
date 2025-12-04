@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Digital Star Cancellation Test</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;display:flex;flex-direction:column;align-items:center;padding:16px;}
+h1{margin:6px 0 8px;font-size:20px;}
+#topRow{width:100%;max-width:1100px;display:flex;gap:12px;align-items:center;justify-content:space-between;}
+#controls{background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.06);display:flex;gap:8px;align-items:center;}
+input,button{font-size:14px;padding:6px;border-radius:4px;border:1px solid #ccc;}
+button{background:#0b74de;color:white;border:none;cursor:pointer;}
+#canvasWrap{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+#canvas{display:block;width:100%;height:72vh;border:1px solid #ddd;touch-action:none;}
+.small{font-size:13px;color:#666;}
+#timer{width:100%;max-width:1100px;margin-top:4px;font-weight:bold;text-align:right;}
+#statsPanel{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.04);display:none;}
+#userForm{display:none;margin-top:12px;gap:8px;background:#fff;padding:12px;border-radius:6px;width:100%;max-width:1100px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
+#userForm input{width:160px;}
+</style>
+</head>
+<body>
+<h1>Digital Star Cancellation Test</h1>
+
+<div id="topRow">
+  <div id="controls">
+    <label class="small">Timeout (minutes):</label>
+    <select id="timeoutMinutes"><option>10</option><option>5</option><option>2</option></select>
+    <button id="startBtn">Start Test</button>
+    <button id="finishBtn" disabled>Finish Test</button>
+    <button id="resetBtn">Reset Test</button>
+  </div>
+</div>
+<div id="timer">Time Left: --:--</div>
+
+<div id="canvasWrap"><canvas id="canvas"></canvas></div>
+
+<div id="statsPanel"><div id="finalStats"></div></div>
+
+<div id="userForm">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <input id="name" placeholder="Name">
+    <input id="surname" placeholder="Surname">
+    <input id="age" placeholder="Age" type="number">
+    <button id="downloadCsv">Download CSV</button>
+    <button id="downloadPng">Download PNG</button>
+  </div>
+  <div class="small" style="margin-top:8px">
+    CSV & PNG format: <code>XXXXXXXX_name_surname_age</code>
+  </div>
+</div>
+
+<script>
+/* CONFIG */
+const CONFIG={
+    smallStarsCount:56, demoSmallStars:2, smallStarR:11,
+    largeStarsCount:52, largeStarR:20,
+    lettersCount:13, letterFont:20,
+    wordsList:["GÜN","AY","SU","EV","YOL","KUM","DAL","KÖY","BOY","EL"], wordFont:16,
+    MAX_PLACEMENT_ATTEMPTS:10000, minGap:10,
+    MIN_STROKE_LEN:6, MAX_STROKE_LEN:100
+};
+
+/* STATE */
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
+let DPR=window.devicePixelRatio||1, objects=[], smallStars=[], strokes=[], rng=Math.random;
+let testStarted=false, testFinished=false, drawEnabled=false, startTime=null, timeoutHandle=null, countdownInterval=null, stats={};
+let fileCode="";
+
+/* UTILS */
+function setCanvasSize(){
+    const wrap=document.getElementById('canvasWrap');
+    const styleW=wrap.clientWidth, styleH=Math.round(window.innerHeight*0.72);
+    canvas.width=Math.floor(styleW*DPR);
+    canvas.height=Math.floor(styleH*DPR);
+    canvas.style.width=styleW+'px';
+    canvas.style.height=styleH+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+function randBetween(a,b){return a+(b-a)*rng();}
+function rectOverlap(a,b,pad=CONFIG.minGap){
+    return !(a.x+a.w+pad<=b.x-pad || a.x-pad>=b.x+b.w+pad || a.y+a.h+pad<=b.y-pad || a.y-pad>=b.y+b.h+pad);
+}
+function segLen(x1,y1,x2,y2){return Math.hypot(x2-x1,y2-y1);}
+function segIntersects(obj,x1,y1,x2,y2){
+    const samples=8;
+    for(let i=0;i<=samples;i++){
+        const t=i/samples;
+        const px=x1+(x2-x1)*t, py=y1+(y2-y1)*t;
+        if(px>=obj.x && px<=obj.x+obj.w && py>=obj.y && py<=obj.y+obj.h) return true;
+    }
+    return false;
+}
+function getCanvasPoint(e){
+    const rect=canvas.getBoundingClientRect();
+    const ev=(e.touches&&e.touches[0])? e.touches[0] : e;
+    return {x:(ev.clientX-rect.left), y:(ev.clientY-rect.top)};
+}
+function formatTime(sec){const m=Math.floor(sec/60).toString().padStart(2,'0'); const s=(sec%60).toString().padStart(2,'0'); return `${m}:${s}`;}
+
+/* PLACEMENT */
+function placeObjects(){
+    objects=[]; smallStars=[];
+    const W=canvas.width/DPR,H=canvas.height/DPR;
+    function tryPlace(w,h,areaX,areaW){
+        for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){
+            const x=randBetween(areaX,areaX+areaW-w), y=randBetween(0,H-h);
+            const c={x,y,w,h}; let ok=true;
+            for(const o of objects) if(rectOverlap(c,o)) {ok=false; break;}
+            if(ok) return c;
+        }
+        return {x:randBetween(areaX,areaX+areaW-w),y:randBetween(0,H-h),w,h};
+    }
+
+    // demo small stars
+    for(let i=0;i<CONFIG.demoSmallStars;i++){
+        const r=CONFIG.smallStarR,w=r*2,h=r*2,pos=tryPlace(w,h,W/2-20,W/2+40);
+        const obj={id:`S${i+1}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:true,cancelled:false};
+        objects.push(obj); smallStars.push(obj);
+    }
+
+    // remaining 54 small stars: 27 left, 27 right
+    const remaining=CONFIG.smallStarsCount - CONFIG.demoSmallStars;
+    for(let i=0;i<remaining;i++){
+        const r=CONFIG.smallStarR,w=r*2,h=r*2;
+        const areaX = i<remaining/2 ? 0 : W/2, areaW = W/2;
+        const pos=tryPlace(w,h,areaX,areaW);
+        const obj={id:`S${i+1+CONFIG.demoSmallStars}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:false,cancelled:false};
+        objects.push(obj); smallStars.push(obj);
+    }
+
+    // large stars, letters, words
+    const placeGeneric=(count,propsGen)=>{for(let i=0;i<count;i++){let obj=null; for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){ const pos=propsGen(); obj={...pos}; let ok=true; for(const o of objects) if(rectOverlap({...pos},o)) {ok=false; break;} if(ok) break;} objects.push(obj);}};
+    placeGeneric(CONFIG.largeStarsCount,()=>({id:`L${Math.random()}`,type:'large',r:CONFIG.largeStarR,w:CONFIG.largeStarR*2,h:CONFIG.largeStarR*2,x:randBetween(0,W-40),y:randBetween(0,H-40)}));
+    const letters='ABCÇDEFGĞHIİJKLMNOÖPQRSŞTÜVYZ'.split('');
+    placeGeneric(CONFIG.lettersCount,()=>{ const ch=letters[Math.floor(randBetween(0,letters.length))], font=CONFIG.letterFont; return {id:`T${Math.random()}`,type:'letter',text:ch,font,w:font*0.9,h:font*1.2,x:randBetween(0,W-font),y:randBetween(0,H-font)};});
+    placeGeneric(CONFIG.wordsList.length,()=>{ const t=CONFIG.wordsList[Math.floor(randBetween(0,CONFIG.wordsList.length))], font=CONFIG.wordFont; const w=Math.max(20,t.length*font*0.6),h=font*1.2; return {id:`W${Math.random()}`,type:'word',text:t,font,w,h,x:randBetween(0,W-w),y:randBetween(0,H-h)};});
+}
+
+/* DRAW */
+function drawStar(cx,cy,r,color='#000'){const spikes=5,outer=r,inner=r*0.45;ctx.beginPath();let rot=Math.PI/2*3;ctx.moveTo(cx,cy-outer);for(let i=0;i<spikes;i++){ctx.lineTo(cx+Math.cos(rot)*outer,cy+Math.sin(rot)*outer);rot+=Math.PI/spikes;ctx.lineTo(cx+Math.cos(rot)*inner,cy+Math.sin(rot)*inner);rot+=Math.PI/spikes;}ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.strokeStyle=color;ctx.stroke();}
+function render(){ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR);for(const o of objects){const cx=o.x+o.w/2,cy=o.y+o.h/2;if(o.type==='small'){drawStar(cx,cy,o.r,o.demo?'#888':'#000');if(o.demo){ctx.strokeStyle='#d9534f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(o.x,o.y);ctx.lineTo(o.x+o.w,o.y+o.h);ctx.moveTo(o.x,o.y+o.h);ctx.lineTo(o.x+o.w,o.y);ctx.stroke();}}else if(o.type==='large'){drawStar(cx,cy,o.r,'#000');}else if(o.type==='letter'){ctx.fillStyle='#000';ctx.font=`${o.font}px Arial`;ctx.fillText(o.text,o.x,o.y+o.h*0.85);}else if(o.type==='word'){ctx.fillStyle='#000';ctx.font=`${o.font}px Arial`;ctx.fillText(o.text,o.x,o.y+o.h*0.85);}}for(const s of strokes){ctx.strokeStyle=testFinished?(s.starCorrect?'#2eb82e':'#d9534f'):'#007acc';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);ctx.stroke();}}
+
+/* POINTER */
+let isDrawing=false, startPoint=null;
+function pointerDown(e){if(!drawEnabled||testFinished) return;e.preventDefault();isDrawing=true;startPoint=getCanvasPoint(e);}
+function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();const p=getCanvasPoint(e);render();ctx.strokeStyle='#007acc';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(startPoint.x,startPoint.y);ctx.lineTo(p.x,p.y);ctx.stroke();}
+function pointerUp(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();isDrawing=false;const end=getCanvasPoint(e),len=segLen(startPoint.x,startPoint.y,end.x,end.y);if(len<CONFIG.MIN_STROKE_LEN||len>CONFIG.MAX_STROKE_LEN){render();return;}const hits=[];for(const s of smallStars){if(s.cancelled||s.demo) continue;if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);}let chosen=null;if(hits.length>0){const midx=(startPoint.x+end.x)/2,midy=(startPoint.y+end.y)/2;hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2));chosen=hits[0];chosen.cancelled=true;}strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen});render();}
+
+/* TEST CONTROL & TIMER */
+function enableDrawing(){drawEnabled=true;}
+function disableDrawing(){drawEnabled=false;}
+function startTest(){
+    testStarted=true; testFinished=false; drawEnabled=false; strokes=[]; startTime=Date.now(); 
+    placeObjects(); setCanvasSize(); render(); enableDrawing(); 
+    document.getElementById('finishBtn').disabled=false; document.getElementById('startBtn').disabled=true;
+    
+    // Countdown
+    const minutes=parseFloat(document.getElementById('timeoutMinutes').value);
+    let remainingSeconds = minutes * 60;
+    document.getElementById('timer').textContent = `Time Left: ${formatTime(remainingSeconds)}`;
+    clearInterval(countdownInterval);
+    countdownInterval = setInterval(()=>{
+        remainingSeconds--;
+        document.getElementById('timer').textContent = `Time Left: ${formatTime(remainingSeconds)}`;
+        if(remainingSeconds <= 0){
+            clearInterval(countdownInterval);
+            finishTest();
+            alert("Time exceeded. Test auto-finished.");
+        }
+    },1000);
+}
+
+function finishTest(){
+    if(!testStarted||testFinished) return; 
+    testFinished=true; disableDrawing(); render(); computeStats(); 
+    document.getElementById('statsPanel').style.display='block'; 
+    document.getElementById('userForm').style.display='flex'; 
+    document.getElementById('finishBtn').disabled=true; 
+    document.getElementById('startBtn').disabled=false; 
+    fileCode=Math.floor(Math.random()*1e8).toString().padStart(8,'0');
+    clearInterval(countdownInterval);
+    document.getElementById('timer').textContent = `Time Left: 00:00`;
+}
+
+/* RESET */
+function resetTest(){clearTimeout(timeoutHandle);clearInterval(countdownInterval);testStarted=false; testFinished=false; drawEnabled=false; strokes=[]; objects=[]; smallStars=[]; stats={};fileCode=""; document.getElementById('statsPanel').style.display='none'; document.getElementById('userForm').style.display='none'; document.getElementById('startBtn').disabled=false; document.getElementById('finishBtn').disabled=true; document.getElementById('timer').textContent = `Time Left: --:--`; setCanvasSize(); render();}
+
+/* STATS & CSV */
+function computeStats(){const scored=smallStars.filter(s=>!s.demo),cancelled=scored.filter(s=>s.cancelled).length; const leftCancelled=scored.filter(s=>s.cancelled&&(s.x+s.w/2)<(canvas.width/DPR)/2).length; const rightCancelled=cancelled-leftCancelled; const lateralityIndex = cancelled>0 ? leftCancelled/cancelled : 0; let USN='None'; if(lateralityIndex<=0.46) USN='Left'; else if(lateralityIndex>=0.54) USN='Right'; stats={totalSmall:smallStars.length,demoCount:smallStars.filter(s=>s.demo).length,scoredTotal:54,cancelled,cancelledLeft:leftCancelled,cancelledRight:rightCancelled,lateralityIndex,USN,durationSeconds:Math.round((Date.now()-startTime)/1000)}; document.getElementById('finalStats').innerHTML=`<strong>Results</strong><br>Cancelled: ${cancelled}/${scored.length}<br>Left: ${leftCancelled} | Right: ${rightCancelled}<br>Laterality Index: ${lateralityIndex.toFixed(2)}<br>USN: ${USN}<br>Duration: ${stats.durationSeconds}s`;}
+
+/* DOWNLOAD CSV & PNG */
+function downloadCSV(){const name=document.getElementById('name').value.trim(); const surname=document.getElementById('surname').value.trim(); const age=document.getElementById('age').value.trim(); if(!name||!surname||!age){alert('Fill all fields');return;} let rows=[]; rows.push(['Name',name],['Surname',surname],['Age',age],[],['TotalSmall',stats.totalSmall],['DemoCount',stats.demoCount],['MaxScore',stats.scoredTotal],['Cancelled',stats.cancelled],['Left',stats.cancelledLeft],['Right',stats.cancelledRight],['LateralityIndex',stats.lateralityIndex],['USN',stats.USN],['DurationSeconds',stats.durationSeconds],[],['Strokes']); strokes.forEach(s=>{rows.push([s.starId,s.x1,s.y1,s.x2,s.y2,s.starCorrect]);}); const csv=rows.map(r=>r.join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${fileCode}_${name}_${surname}_${age}.csv`; a.click();}
+function downloadPNG(){const name=document.getElementById('name').value.trim(); const surname=document.getElementById('surname').value.trim(); const age=document.getElementById('age').value.trim(); if(!name||!surname||!age){alert('Fill all fields');return;} canvas.toBlob(function(blob){const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${fileCode}_${name}_${surname}_${age}.png`; a.click(); URL.revokeObjectURL(url);});}
+
+/* EVENTS */
+document.getElementById('startBtn').addEventListener('click',startTest);
+document.getElementById('finishBtn').addEventListener('click',finishTest);
+document.getElementById('resetBtn').addEventListener('click',resetTest);
+document.getElementById('downloadCsv').addEventListener('click',downloadCSV);
+document.getElementById('downloadPng').addEventListener('click',downloadPNG);
+canvas.addEventListener('mousedown',pointerDown);
+canvas.addEventListener('mousemove',pointerMove);
+canvas.addEventListener('mouseup',pointerUp);
+canvas.addEventListener('mouseleave',()=>{if(isDrawing){isDrawing=false; render();}});
+canvas.addEventListener('touchstart',pointerDown,{passive:false});
+canvas.addEventListener('touchmove',pointerMove,{passive:false});
+canvas.addEventListener('touchend',pointerUp,{passive:false});
+
+/* INIT */
+setCanvasSize(); render();
+window.addEventListener('resize',()=>{setCanvasSize(); render();});
+</script>
+</body>
+</html>
