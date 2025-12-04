@@ -68,6 +68,7 @@ let DPR=window.devicePixelRatio||1, objects=[], smallStars=[], strokes=[], rng=M
 let testStarted=false, testFinished=false, drawEnabled=false, startTime=null, timeoutHandle=null, countdownInterval=null, stats={};
 let fileCode="";
 let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
+let tempStroke=null;
 
 /* UTILS */
 function setCanvasSize(){
@@ -79,12 +80,11 @@ function setCanvasSize(){
     canvas.style.height=styleH+'px';
     ctx.setTransform(DPR,0,0,DPR,0,0);
 
-    // Update scaleFactor on resize
+    // Update scaleFactor
     scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
 }
-
 function randBetween(a,b){return a+(b-a)*rng();}
-function rectOverlap(a,b,pad=CONFIG.minGap){
+function rectOverlap(a,b,pad=CONFIG.minGap*scaleFactor){
     return !(a.x+a.w+pad<=b.x-pad || a.x-pad>=b.x+b.w+pad || a.y+a.h+pad<=b.y-pad || a.y-pad>=b.y+b.h+pad);
 }
 function segLen(x1,y1,x2,y2){return Math.hypot(x2-x1,y2-y1);}
@@ -183,13 +183,48 @@ function placeObjects(){
 
 /* DRAW */
 function drawStar(cx,cy,r,color='#000'){const spikes=5,outer=r,inner=r*0.45;ctx.beginPath();let rot=Math.PI/2*3;ctx.moveTo(cx,cy-outer);for(let i=0;i<spikes;i++){ctx.lineTo(cx+Math.cos(rot)*outer,cy+Math.sin(rot)*outer);rot+=Math.PI/spikes;ctx.lineTo(cx+Math.cos(rot)*inner,cy+Math.sin(rot)*inner);rot+=Math.PI/spikes;}ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.strokeStyle=color;ctx.stroke();}
-function render(){ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR);for(const o of objects){const cx=o.x+o.w/2,cy=o.y+o.h/2;if(o.type==='small'){drawStar(cx,cy,o.r,o.demo?'#888':'#000');if(o.demo){ctx.strokeStyle='#d9534f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(o.x,o.y);ctx.lineTo(o.x+o.w,o.y+o.h);ctx.moveTo(o.x,o.y+o.h);ctx.lineTo(o.x+o.w,o.y);ctx.stroke();}}else if(o.type==='large'){drawStar(cx,cy,o.r,'#000');}else if(o.type==='letter'){ctx.fillStyle='#000';ctx.font=`${o.font}px Arial`;ctx.fillText(o.text,o.x,o.y+o.h*0.85);}else if(o.type==='word'){ctx.fillStyle='#000';ctx.font=`${o.font}px Arial`;ctx.fillText(o.text,o.x,o.y+o.h*0.85);}}for(const s of strokes){ctx.strokeStyle=testFinished?(s.starCorrect?'#2eb82e':'#d9534f'):'#007acc';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);ctx.stroke();}}
+function render(){
+    ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR);
+    for(const o of objects){
+        const cx=o.x+o.w/2,cy=o.y+o.h/2;
+        if(o.type==='small'){drawStar(cx,cy,o.r,o.demo?'#888':'#000');if(o.demo){ctx.strokeStyle='#d9534f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(o.x,o.y);ctx.lineTo(o.x+o.w,o.y+o.h);ctx.moveTo(o.x,o.y+o.h);ctx.lineTo(o.x+o.w,o.y);ctx.stroke();}}
+        else if(o.type==='large'){drawStar(cx,cy,o.r,'#000');}
+        else if(o.type==='letter'){ctx.fillStyle='#000';ctx.font=`${o.font}px Arial`;ctx.fillText(o.text,o.x,o.y+o.h*0.85);}
+        else if(o.type==='word'){ctx.fillStyle='#000';ctx.font=`${o.font}px Arial`;ctx.fillText(o.text,o.x,o.y+o.h*0.85);}
+    }
+    for(const s of strokes){
+        ctx.strokeStyle=testFinished?(s.starCorrect?'#2eb82e':'#d9534f'):'#007acc';
+        ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke();
+    }
+    // draw temporary stroke if in-progress
+    if(tempStroke){
+        ctx.strokeStyle='#007acc'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(tempStroke.x1,tempStroke.y1); ctx.lineTo(tempStroke.x2,tempStroke.y2); ctx.stroke();
+    }
+}
 
 /* POINTER */
 let isDrawing=false, startPoint=null;
 function pointerDown(e){if(!drawEnabled||testFinished) return;e.preventDefault();isDrawing=true;startPoint=getCanvasPoint(e);}
-function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();const p=getCanvasPoint(e);render();ctx.strokeStyle='#007acc';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(startPoint.x,startPoint.y);ctx.lineTo(p.x,p.y);ctx.stroke();}
-function pointerUp(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();isDrawing=false;const end=getCanvasPoint(e),len=segLen(startPoint.x,startPoint.y,end.x,end.y);if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){render();return;}const hits=[];for(const s of smallStars){if(s.cancelled||s.demo) continue;if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);}let chosen=null;if(hits.length>0){const midx=(startPoint.x+end.x)/2,midy=(startPoint.y+end.y)/2;hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2));chosen=hits[0];chosen.cancelled=true;}strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen});render();}
+function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();const p=getCanvasPoint(e);tempStroke={x1:startPoint.x,y1:startPoint.y,x2:p.x,y2:p.y}; render();}
+function pointerUp(e){
+    if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();
+    isDrawing=false;
+    const end=getCanvasPoint(e);
+    const len=segLen(startPoint.x,startPoint.y,end.x,end.y);
+    tempStroke=null;
+    if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){render();return;}
+    const hits=[];
+    for(const s of smallStars){if(s.cancelled||s.demo) continue;if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);}
+    let chosen=null;
+    if(hits.length>0){
+        const midx=(startPoint.x+end.x)/2, midy=(startPoint.y+end.y)/2;
+        hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2));
+        chosen=hits[0]; chosen.cancelled=true;
+    }
+    strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen});
+    render();
+}
 
 /* TEST CONTROL & TIMER */
 function enableDrawing(){drawEnabled=true;}
@@ -245,7 +280,7 @@ document.getElementById('downloadPng').addEventListener('click',downloadPNG);
 canvas.addEventListener('mousedown',pointerDown);
 canvas.addEventListener('mousemove',pointerMove);
 canvas.addEventListener('mouseup',pointerUp);
-canvas.addEventListener('mouseleave',()=>{if(isDrawing){isDrawing=false; render();}});
+canvas.addEventListener('mouseleave',()=>{if(isDrawing){isDrawing=false; tempStroke=null; render();}});
 canvas.addEventListener('touchstart',pointerDown,{passive:false});
 canvas.addEventListener('touchmove',pointerMove,{passive:false});
 canvas.addEventListener('touchend',pointerUp,{passive:false});
