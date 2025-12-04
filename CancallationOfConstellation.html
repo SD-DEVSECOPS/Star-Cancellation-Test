@@ -67,6 +67,7 @@ const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
 let DPR=window.devicePixelRatio||1, objects=[], smallStars=[], strokes=[], rng=Math.random;
 let testStarted=false, testFinished=false, drawEnabled=false, startTime=null, timeoutHandle=null, countdownInterval=null, stats={};
 let fileCode="";
+let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
 
 /* UTILS */
 function setCanvasSize(){
@@ -77,7 +78,11 @@ function setCanvasSize(){
     canvas.style.width=styleW+'px';
     canvas.style.height=styleH+'px';
     ctx.setTransform(DPR,0,0,DPR,0,0);
+
+    // Update scaleFactor on resize
+    scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
 }
+
 function randBetween(a,b){return a+(b-a)*rng();}
 function rectOverlap(a,b,pad=CONFIG.minGap){
     return !(a.x+a.w+pad<=b.x-pad || a.x-pad>=b.x+b.w+pad || a.y+a.h+pad<=b.y-pad || a.y-pad>=b.y+b.h+pad);
@@ -102,7 +107,7 @@ function formatTime(sec){const m=Math.floor(sec/60).toString().padStart(2,'0'); 
 /* PLACEMENT */
 function placeObjects(){
     objects=[]; smallStars=[];
-    const W=canvas.width/DPR,H=canvas.height/DPR;
+    const W=canvas.width/DPR, H=canvas.height/DPR;
     function tryPlace(w,h,areaX,areaW){
         for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){
             const x=randBetween(areaX,areaX+areaW-w), y=randBetween(0,H-h);
@@ -115,27 +120,65 @@ function placeObjects(){
 
     // demo small stars
     for(let i=0;i<CONFIG.demoSmallStars;i++){
-        const r=CONFIG.smallStarR,w=r*2,h=r*2,pos=tryPlace(w,h,W/2-20,W/2+40);
+        const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2,pos=tryPlace(w,h,W/2-20*scaleFactor,W/2+40*scaleFactor);
         const obj={id:`S${i+1}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:true,cancelled:false};
         objects.push(obj); smallStars.push(obj);
     }
 
-    // remaining 54 small stars: 27 left, 27 right
+    // remaining small stars
     const remaining=CONFIG.smallStarsCount - CONFIG.demoSmallStars;
     for(let i=0;i<remaining;i++){
-        const r=CONFIG.smallStarR,w=r*2,h=r*2;
+        const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2;
         const areaX = i<remaining/2 ? 0 : W/2, areaW = W/2;
         const pos=tryPlace(w,h,areaX,areaW);
         const obj={id:`S${i+1+CONFIG.demoSmallStars}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:false,cancelled:false};
         objects.push(obj); smallStars.push(obj);
     }
 
-    // large stars, letters, words
+    // generic objects (large stars, letters, words)
     const placeGeneric=(count,propsGen)=>{for(let i=0;i<count;i++){let obj=null; for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){ const pos=propsGen(); obj={...pos}; let ok=true; for(const o of objects) if(rectOverlap({...pos},o)) {ok=false; break;} if(ok) break;} objects.push(obj);}};
-    placeGeneric(CONFIG.largeStarsCount,()=>({id:`L${Math.random()}`,type:'large',r:CONFIG.largeStarR,w:CONFIG.largeStarR*2,h:CONFIG.largeStarR*2,x:randBetween(0,W-40),y:randBetween(0,H-40)}));
+    
+    placeGeneric(CONFIG.largeStarsCount,()=>({
+        id:`L${Math.random()}`,
+        type:'large',
+        r:CONFIG.largeStarR*scaleFactor,
+        w:CONFIG.largeStarR*2*scaleFactor,
+        h:CONFIG.largeStarR*2*scaleFactor,
+        x:randBetween(0,W-40*scaleFactor),
+        y:randBetween(0,H-40*scaleFactor)
+    }));
+
     const letters='ABCÇDEFGĞHIİJKLMNOÖPQRSŞTÜVYZ'.split('');
-    placeGeneric(CONFIG.lettersCount,()=>{ const ch=letters[Math.floor(randBetween(0,letters.length))], font=CONFIG.letterFont; return {id:`T${Math.random()}`,type:'letter',text:ch,font,w:font*0.9,h:font*1.2,x:randBetween(0,W-font),y:randBetween(0,H-font)};});
-    placeGeneric(CONFIG.wordsList.length,()=>{ const t=CONFIG.wordsList[Math.floor(randBetween(0,CONFIG.wordsList.length))], font=CONFIG.wordFont; const w=Math.max(20,t.length*font*0.6),h=font*1.2; return {id:`W${Math.random()}`,type:'word',text:t,font,w,h,x:randBetween(0,W-w),y:randBetween(0,H-h)};});
+    placeGeneric(CONFIG.lettersCount,()=>{
+        const font = CONFIG.letterFont*scaleFactor;
+        const ch = letters[Math.floor(randBetween(0,letters.length))];
+        return {
+            id:`T${Math.random()}`,
+            type:'letter',
+            text:ch,
+            font,
+            w:font*0.9,
+            h:font*1.2,
+            x:randBetween(0,W-font),
+            y:randBetween(0,H-font)
+        };
+    });
+
+    placeGeneric(CONFIG.wordsList.length,()=>{
+        const font = CONFIG.wordFont*scaleFactor;
+        const t = CONFIG.wordsList[Math.floor(randBetween(0,CONFIG.wordsList.length))];
+        const w = Math.max(20,t.length*font*0.6), h = font*1.2;
+        return {
+            id:`W${Math.random()}`,
+            type:'word',
+            text:t,
+            font,
+            w,
+            h,
+            x:randBetween(0,W-w),
+            y:randBetween(0,H-h)
+        };
+    });
 }
 
 /* DRAW */
@@ -146,7 +189,7 @@ function render(){ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR);for(cons
 let isDrawing=false, startPoint=null;
 function pointerDown(e){if(!drawEnabled||testFinished) return;e.preventDefault();isDrawing=true;startPoint=getCanvasPoint(e);}
 function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();const p=getCanvasPoint(e);render();ctx.strokeStyle='#007acc';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(startPoint.x,startPoint.y);ctx.lineTo(p.x,p.y);ctx.stroke();}
-function pointerUp(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();isDrawing=false;const end=getCanvasPoint(e),len=segLen(startPoint.x,startPoint.y,end.x,end.y);if(len<CONFIG.MIN_STROKE_LEN||len>CONFIG.MAX_STROKE_LEN){render();return;}const hits=[];for(const s of smallStars){if(s.cancelled||s.demo) continue;if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);}let chosen=null;if(hits.length>0){const midx=(startPoint.x+end.x)/2,midy=(startPoint.y+end.y)/2;hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2));chosen=hits[0];chosen.cancelled=true;}strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen});render();}
+function pointerUp(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();isDrawing=false;const end=getCanvasPoint(e),len=segLen(startPoint.x,startPoint.y,end.x,end.y);if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){render();return;}const hits=[];for(const s of smallStars){if(s.cancelled||s.demo) continue;if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);}let chosen=null;if(hits.length>0){const midx=(startPoint.x+end.x)/2,midy=(startPoint.y+end.y)/2;hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2));chosen=hits[0];chosen.cancelled=true;}strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen});render();}
 
 /* TEST CONTROL & TIMER */
 function enableDrawing(){drawEnabled=true;}
@@ -156,7 +199,6 @@ function startTest(){
     placeObjects(); setCanvasSize(); render(); enableDrawing(); 
     document.getElementById('finishBtn').disabled=false; document.getElementById('startBtn').disabled=true;
     
-    // Countdown
     const minutes=parseFloat(document.getElementById('timeoutMinutes').value);
     let remainingSeconds = minutes * 60;
     document.getElementById('timer').textContent = `Time Left: ${formatTime(remainingSeconds)}`;
