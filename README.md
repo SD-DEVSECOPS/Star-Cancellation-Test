@@ -1,101 +1,124 @@
-# Star Cancellation Test
+Star Cancellation Test
 
-This repository contains the **Star Cancellation Test** — a browser-based assessment tool used to measure visuospatial attention, perceptual accuracy, and motor control.  
-It is commonly used in neurological and neuropsychological research, including studies on spatial neglect and related conditions.
+This repository contains the Star Cancellation Test — a browser-based assessment tool used to measure visuospatial attention, perceptual accuracy, and motor control. It is commonly used in neurological and neuropsychological research, including studies on spatial neglect and related conditions.
 
----
+📌 Overview
 
-## 📌 Overview
-
-The test displays **small and large stars**, letters, and words on an interactive canvas.  
-For each trial, the participant cancels (draws over) the **small stars** they see.
+The test displays small and large stars, letters, and words on an interactive canvas.
+For each trial, the participant cancels (draws over) the small stars they see.
 
 The system automatically records:
 
-- Stars cancelled correctly  
-- Left/right distribution of cancelled stars  
-- Laterality Index (proportion of left vs right cancellations)  
-- Summary statistics across the test  
-- CSV export including full data and participant demographics
+Stars cancelled correctly
 
-A researcher **cannot currently adjust the number of demo or target stars**, as these are preset in the test.  
+Left/right distribution of cancelled stars
 
----
+Laterality Index (proportion of left vs right cancellations)
 
-## 🌐 Cross-Platform Use
+Summary statistics across the test
 
-The Star Cancellation Test runs entirely in a web browser — no installation required.
+CSV export including full data and participant demographics
 
-- **Desktop:** use mouse clicks  
-- **Mobile / iPad:** use touchscreen taps  
-- Fully responsive layout  
-- Canvas area enlarged for better visibility on phones and tablets  
-- Live strokes and statistics displayed below the test area  
+🔧 New Feature: Configurable Object Counts
 
----
+Researchers can now set the number of objects before starting the test:
 
-## 🧪 How to Use
+Object Type	Recommended Range
+Small stars	50–80
+Large stars	50–70
+Letters	10–30
+Words	10–20
 
-1. Open the test at:
+The system validates inputs to prevent overloading the canvas and ensures objects do not overlap excessively.
 
-   **https://sd-devsecops.github.io/Star-Cancellation-Test/CancallationOfConstellation.html**
+🌐 Cross-Platform Use
 
-2. Set the **timeout duration** at the top (minutes) and press **Start Test**.
+The Star Cancellation Test runs entirely in a web browser — no installation required:
 
-3. Cancel small stars by drawing over them on the canvas.
+Desktop: Use mouse clicks
 
-4. When the **time expires** or the **Finish Test** button is pressed:
-   - A form will appear requesting:
-     - Name  
-     - Surname  
-     - Age
+Mobile / iPad: Use touchscreen taps
 
-5. Press **Download CSV** or **Download PNG** to save results.  
-   The files include:
-   - All stroke data  
-   - Cancelled stars (left/right counts)  
-   - Laterality Index  
-   - Duration of the test  
-   - Demographic metadata
+Fully responsive layout
 
----
+Canvas area enlarged for better visibility on phones and tablets
 
-## ✨ Features
+Live strokes and statistics displayed below the test area
 
-- Preset number of small and large stars, letters, and words  
-- Countdown timer with automatic completion at timeout  
-- Option to manually finish the test anytime via **Finish Test** button  
-- Large responsive canvas for mobile/iPad usability  
-- Statistics displayed below the canvas to avoid influencing performance  
-- CSV export with all metrics and participant info  
-- PNG export of the canvas for visual record  
-- Fully offline capable (works without internet once loaded)  
-- No external libraries required  
+🧪 How to Use
 
----
+Open the test at:
+https://sd-devsecops.github.io/Star-Cancellation-Test/CancallationOfConstellation.html
 
-## 📁 Repository Contents
+Configure object counts (optional) and set the timeout duration at the top (minutes).
 
-- **`CancallationOfConstellation.html`** – Full test interface + JavaScript logic  
-- **`README.md`** – Documentation
+Press Start Test.
 
----
+Cancel small stars by drawing over them on the canvas.
 
-## ⚖ License
+When the time expires or the Finish Test button is pressed:
+
+A form will appear requesting participant information:
+
+Name
+
+Surname
+
+Age
+
+Press Download CSV or Download PNG to save results.
+
+The exported files include:
+
+All stroke data
+
+Cancelled stars (left/right counts)
+
+Laterality Index
+
+Duration of the test
+
+Demographic metadata
+
+✨ Features
+
+Configurable number of small and large stars, letters, and words
+
+Countdown timer with automatic completion at timeout
+
+Option to manually finish the test anytime via Finish Test button
+
+Large responsive canvas for mobile/iPad usability
+
+Statistics displayed below the canvas to avoid influencing performance
+
+CSV export with all metrics and participant info
+
+PNG export of the canvas for visual record
+
+Fully offline capable (works without internet once loaded)
+
+No external libraries required
+
+📁 Repository Contents
+
+CancallationOfConstellation.html – Full test interface + JavaScript logic
+
+README.md – Documentation
+
+⚖ License
 
 This project is open-source and free for educational and research use.
 
----
-
-## ⚠ Ethical Disclaimer
+⚠ Ethical Disclaimer
 
 For any clinical or research use:
 
-- Ensure appropriate ethical approval  
-- Obtain informed consent  
-- Validate all exported results independently  
+Ensure appropriate ethical approval
 
----
+Obtain informed consent
 
-**Project by Melisa Zengin**  
-**Powered by ChatGPT**
+Validate all exported results independently
+
+Project by Melisa Zengin
+Powered by ChatGPT
