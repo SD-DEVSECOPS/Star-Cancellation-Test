@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Digital Star Cancellation Test</title>
+<title>Star Cancellation Test</title>
 <style>
 body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;display:flex;flex-direction:column;align-items:center;padding:16px;}
 h1{margin:6px 0 8px;font-size:20px;}
@@ -21,7 +21,7 @@ button{background:#0b74de;color:white;border:none;cursor:pointer;}
 </style>
 </head>
 <body>
-<h1>Digital Star Cancellation Test</h1>
+<h1>Star Cancellation Test</h1>
 
 <div id="topRow">
   <div id="controls">
@@ -79,8 +79,6 @@ function setCanvasSize(){
     canvas.style.width=styleW+'px';
     canvas.style.height=styleH+'px';
     ctx.setTransform(DPR,0,0,DPR,0,0);
-
-    // Update scaleFactor
     scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
 }
 function randBetween(a,b){return a+(b-a)*rng();}
@@ -117,15 +115,11 @@ function placeObjects(){
         }
         return {x:randBetween(areaX,areaX+areaW-w),y:randBetween(0,H-h),w,h};
     }
-
-    // demo small stars
     for(let i=0;i<CONFIG.demoSmallStars;i++){
         const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2,pos=tryPlace(w,h,W/2-20*scaleFactor,W/2+40*scaleFactor);
         const obj={id:`S${i+1}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:true,cancelled:false};
         objects.push(obj); smallStars.push(obj);
     }
-
-    // remaining small stars
     const remaining=CONFIG.smallStarsCount - CONFIG.demoSmallStars;
     for(let i=0;i<remaining;i++){
         const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2;
@@ -134,50 +128,25 @@ function placeObjects(){
         const obj={id:`S${i+1+CONFIG.demoSmallStars}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:false,cancelled:false};
         objects.push(obj); smallStars.push(obj);
     }
-
-    // generic objects (large stars, letters, words)
     const placeGeneric=(count,propsGen)=>{for(let i=0;i<count;i++){let obj=null; for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){ const pos=propsGen(); obj={...pos}; let ok=true; for(const o of objects) if(rectOverlap({...pos},o)) {ok=false; break;} if(ok) break;} objects.push(obj);}};
-    
     placeGeneric(CONFIG.largeStarsCount,()=>({
-        id:`L${Math.random()}`,
-        type:'large',
-        r:CONFIG.largeStarR*scaleFactor,
-        w:CONFIG.largeStarR*2*scaleFactor,
-        h:CONFIG.largeStarR*2*scaleFactor,
-        x:randBetween(0,W-40*scaleFactor),
-        y:randBetween(0,H-40*scaleFactor)
+        id:`L${Math.random()}`, type:'large', r:CONFIG.largeStarR*scaleFactor,
+        w:CONFIG.largeStarR*2*scaleFactor, h:CONFIG.largeStarR*2*scaleFactor,
+        x:randBetween(0,W-40*scaleFactor), y:randBetween(0,H-40*scaleFactor)
     }));
-
     const letters='ABCÇDEFGĞHIİJKLMNOÖPQRSŞTÜVYZ'.split('');
     placeGeneric(CONFIG.lettersCount,()=>{
         const font = CONFIG.letterFont*scaleFactor;
         const ch = letters[Math.floor(randBetween(0,letters.length))];
-        return {
-            id:`T${Math.random()}`,
-            type:'letter',
-            text:ch,
-            font,
-            w:font*0.9,
-            h:font*1.2,
-            x:randBetween(0,W-font),
-            y:randBetween(0,H-font)
-        };
+        return {id:`T${Math.random()}`, type:'letter', text:ch, font, w:font*0.9, h:font*1.2,
+                x:randBetween(0,W-font), y:randBetween(0,H-font)};
     });
-
     placeGeneric(CONFIG.wordsList.length,()=>{
         const font = CONFIG.wordFont*scaleFactor;
         const t = CONFIG.wordsList[Math.floor(randBetween(0,CONFIG.wordsList.length))];
         const w = Math.max(20,t.length*font*0.6), h = font*1.2;
-        return {
-            id:`W${Math.random()}`,
-            type:'word',
-            text:t,
-            font,
-            w,
-            h,
-            x:randBetween(0,W-w),
-            y:randBetween(0,H-h)
-        };
+        return {id:`W${Math.random()}`, type:'word', text:t, font, w, h,
+                x:randBetween(0,W-w), y:randBetween(0,H-h)};
     });
 }
 
@@ -196,80 +165,23 @@ function render(){
         ctx.strokeStyle=testFinished?(s.starCorrect?'#2eb82e':'#d9534f'):'#007acc';
         ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke();
     }
-    // draw temporary stroke if in-progress
-    if(tempStroke){
-        ctx.strokeStyle='#007acc'; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.moveTo(tempStroke.x1,tempStroke.y1); ctx.lineTo(tempStroke.x2,tempStroke.y2); ctx.stroke();
-    }
+    if(tempStroke){ctx.strokeStyle='#007acc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(tempStroke.x1,tempStroke.y1); ctx.lineTo(tempStroke.x2,tempStroke.y2); ctx.stroke();}
 }
 
-/* POINTER */
+/* POINTER FIX FOR MOBILE & DESKTOP */
 let isDrawing=false, startPoint=null;
-function pointerDown(e){if(!drawEnabled||testFinished) return;e.preventDefault();isDrawing=true;startPoint=getCanvasPoint(e);}
-function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();const p=getCanvasPoint(e);tempStroke={x1:startPoint.x,y1:startPoint.y,x2:p.x,y2:p.y}; render();}
-function pointerUp(e){
-    if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();
-    isDrawing=false;
-    const end=getCanvasPoint(e);
-    const len=segLen(startPoint.x,startPoint.y,end.x,end.y);
-    tempStroke=null;
-    if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){render();return;}
-    const hits=[];
-    for(const s of smallStars){if(s.cancelled||s.demo) continue;if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);}
-    let chosen=null;
-    if(hits.length>0){
-        const midx=(startPoint.x+end.x)/2, midy=(startPoint.y+end.y)/2;
-        hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2));
-        chosen=hits[0]; chosen.cancelled=true;
-    }
-    strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen});
-    render();
-}
+function pointerDown(e){if(!drawEnabled||testFinished) return; e.preventDefault(); startPoint=getCanvasPoint(e); isDrawing=true; tempStroke={x1:startPoint.x,y1:startPoint.y,x2:startPoint.x,y2:startPoint.y}; render();}
+function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing) return; e.preventDefault(); const p=getCanvasPoint(e); tempStroke.x2=p.x; tempStroke.y2=p.y; render();}
+function pointerUp(e){if(!drawEnabled||testFinished||!isDrawing) return; e.preventDefault(); const end=getCanvasPoint(e); const len=segLen(startPoint.x,startPoint.y,end.x,end.y); isDrawing=false; tempStroke=null; if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){render(); return;} const hits=[]; for(const s of smallStars){if(s.cancelled||s.demo) continue; if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);} let chosen=null; if(hits.length>0){const midx=(startPoint.x+end.x)/2, midy=(startPoint.y+end.y)/2; hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2)); chosen=hits[0]; chosen.cancelled=true;} strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen}); render();}
 
-/* TEST CONTROL & TIMER */
-function enableDrawing(){drawEnabled=true;}
-function disableDrawing(){drawEnabled=false;}
-function startTest(){
-    testStarted=true; testFinished=false; drawEnabled=false; strokes=[]; startTime=Date.now(); 
-    placeObjects(); setCanvasSize(); render(); enableDrawing(); 
-    document.getElementById('finishBtn').disabled=false; document.getElementById('startBtn').disabled=true;
-    
-    const minutes=parseFloat(document.getElementById('timeoutMinutes').value);
-    let remainingSeconds = minutes * 60;
-    document.getElementById('timer').textContent = `Time Left: ${formatTime(remainingSeconds)}`;
-    clearInterval(countdownInterval);
-    countdownInterval = setInterval(()=>{
-        remainingSeconds--;
-        document.getElementById('timer').textContent = `Time Left: ${formatTime(remainingSeconds)}`;
-        if(remainingSeconds <= 0){
-            clearInterval(countdownInterval);
-            finishTest();
-            alert("Time exceeded. Test auto-finished.");
-        }
-    },1000);
-}
-
-function finishTest(){
-    if(!testStarted||testFinished) return; 
-    testFinished=true; disableDrawing(); render(); computeStats(); 
-    document.getElementById('statsPanel').style.display='block'; 
-    document.getElementById('userForm').style.display='flex'; 
-    document.getElementById('finishBtn').disabled=true; 
-    document.getElementById('startBtn').disabled=false; 
-    fileCode=Math.floor(Math.random()*1e8).toString().padStart(8,'0');
-    clearInterval(countdownInterval);
-    document.getElementById('timer').textContent = `Time Left: 00:00`;
-}
-
-/* RESET */
-function resetTest(){clearTimeout(timeoutHandle);clearInterval(countdownInterval);testStarted=false; testFinished=false; drawEnabled=false; strokes=[]; objects=[]; smallStars=[]; stats={};fileCode=""; document.getElementById('statsPanel').style.display='none'; document.getElementById('userForm').style.display='none'; document.getElementById('startBtn').disabled=false; document.getElementById('finishBtn').disabled=true; document.getElementById('timer').textContent = `Time Left: --:--`; setCanvasSize(); render();}
-
-/* STATS & CSV */
-function computeStats(){const scored=smallStars.filter(s=>!s.demo),cancelled=scored.filter(s=>s.cancelled).length; const leftCancelled=scored.filter(s=>s.cancelled&&(s.x+s.w/2)<(canvas.width/DPR)/2).length; const rightCancelled=cancelled-leftCancelled; const lateralityIndex = cancelled>0 ? leftCancelled/cancelled : 0; let USN='None'; if(lateralityIndex<=0.46) USN='Left'; else if(lateralityIndex>=0.54) USN='Right'; stats={totalSmall:smallStars.length,demoCount:smallStars.filter(s=>s.demo).length,scoredTotal:54,cancelled,cancelledLeft:leftCancelled,cancelledRight:rightCancelled,lateralityIndex,USN,durationSeconds:Math.round((Date.now()-startTime)/1000)}; document.getElementById('finalStats').innerHTML=`<strong>Results</strong><br>Cancelled: ${cancelled}/${scored.length}<br>Left: ${leftCancelled} | Right: ${rightCancelled}<br>Laterality Index: ${lateralityIndex.toFixed(2)}<br>USN: ${USN}<br>Duration: ${stats.durationSeconds}s`;}
-
-/* DOWNLOAD CSV & PNG */
-function downloadCSV(){const name=document.getElementById('name').value.trim(); const surname=document.getElementById('surname').value.trim(); const age=document.getElementById('age').value.trim(); if(!name||!surname||!age){alert('Fill all fields');return;} let rows=[]; rows.push(['Name',name],['Surname',surname],['Age',age],[],['TotalSmall',stats.totalSmall],['DemoCount',stats.demoCount],['MaxScore',stats.scoredTotal],['Cancelled',stats.cancelled],['Left',stats.cancelledLeft],['Right',stats.cancelledRight],['LateralityIndex',stats.lateralityIndex],['USN',stats.USN],['DurationSeconds',stats.durationSeconds],[],['Strokes']); strokes.forEach(s=>{rows.push([s.starId,s.x1,s.y1,s.x2,s.y2,s.starCorrect]);}); const csv=rows.map(r=>r.join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${fileCode}_${name}_${surname}_${age}.csv`; a.click();}
-function downloadPNG(){const name=document.getElementById('name').value.trim(); const surname=document.getElementById('surname').value.trim(); const age=document.getElementById('age').value.trim(); if(!name||!surname||!age){alert('Fill all fields');return;} canvas.toBlob(function(blob){const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${fileCode}_${name}_${surname}_${age}.png`; a.click(); URL.revokeObjectURL(url);});}
+/* TEST CONTROL, RESET, STATS, DOWNLOAD */
+function enableDrawing(){drawEnabled=true;} function disableDrawing(){drawEnabled=false;}
+function startTest(){testStarted=true; testFinished=false; drawEnabled=false; strokes=[]; startTime=Date.now(); placeObjects(); setCanvasSize(); render(); enableDrawing(); document.getElementById('finishBtn').disabled=false; document.getElementById('startBtn').disabled=true; let remainingSeconds=parseFloat(document.getElementById('timeoutMinutes').value)*60; document.getElementById('timer').textContent=`Time Left: ${formatTime(remainingSeconds)}`; clearInterval(countdownInterval); countdownInterval=setInterval(()=>{remainingSeconds--; document.getElementById('timer').textContent=`Time Left: ${formatTime(remainingSeconds)}`; if(remainingSeconds<=0){clearInterval(countdownInterval); finishTest(); alert("Time exceeded. Test auto-finished.");}},1000);}
+function finishTest(){if(!testStarted||testFinished)return; testFinished=true; disableDrawing(); render(); computeStats(); document.getElementById('statsPanel').style.display='block'; document.getElementById('userForm').style.display='flex'; document.getElementById('finishBtn').disabled=true; document.getElementById('startBtn').disabled=false; fileCode=Math.floor(Math.random()*1e8).toString().padStart(8,'0'); clearInterval(countdownInterval); document.getElementById('timer').textContent='Time Left: 00:00';}
+function resetTest(){clearTimeout(timeoutHandle);clearInterval(countdownInterval);testStarted=false; testFinished=false; drawEnabled=false; strokes=[]; objects=[]; smallStars=[]; stats={};fileCode=""; document.getElementById('statsPanel').style.display='none'; document.getElementById('userForm').style.display='none'; document.getElementById('startBtn').disabled=false; document.getElementById('finishBtn').disabled=true; document.getElementById('timer').textContent='Time Left: --:--'; setCanvasSize(); render();}
+function computeStats(){const scored=smallStars.filter(s=>!s.demo),cancelled=scored.filter(s=>s.cancelled).length,leftCancelled=scored.filter(s=>s.cancelled&&(s.x+s.w/2)<(canvas.width/DPR)/2).length,rightCancelled=cancelled-leftCancelled,lateralityIndex=cancelled>0?leftCancelled/cancelled:0;let USN='None';if(lateralityIndex<=0.46) USN='Left';else if(lateralityIndex>=0.54) USN='Right'; stats={totalSmall:smallStars.length,demoCount:smallStars.filter(s=>s.demo).length,scoredTotal:54,cancelled,cancelledLeft:leftCancelled,cancelledRight:rightCancelled,lateralityIndex,USN,durationSeconds:Math.round((Date.now()-startTime)/1000)}; document.getElementById('finalStats').innerHTML=`<strong>Results</strong><br>Cancelled: ${cancelled}/${scored.length}<br>Left: ${leftCancelled} | Right: ${rightCancelled}<br>Laterality Index: ${lateralityIndex.toFixed(2)}<br>USN: ${USN}<br>Duration: ${stats.durationSeconds}s`;}
+function downloadCSV(){const name=document.getElementById('name').value.trim(),surname=document.getElementById('surname').value.trim(),age=document.getElementById('age').value.trim();if(!name||!surname||!age){alert('Fill all fields');return;}let rows=[]; rows.push(['Name',name],['Surname',surname],['Age',age],[],['TotalSmall',stats.totalSmall],['DemoCount',stats.demoCount],['MaxScore',stats.scoredTotal],['Cancelled',stats.cancelled],['Left',stats.cancelledLeft],['Right',stats.cancelledRight],['LateralityIndex',stats.lateralityIndex],['USN',stats.USN],['DurationSeconds',stats.durationSeconds],[],['Strokes']); strokes.forEach(s=>{rows.push([s.starId,s.x1,s.y1,s.x2,s.y2,s.starCorrect]);}); const csv=rows.map(r=>r.join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${fileCode}_${name}_${surname}_${age}.csv`; a.click();}
+function downloadPNG(){const name=document.getElementById('name').value.trim(),surname=document.getElementById('surname').value.trim(),age=document.getElementById('age').value.trim();if(!name||!surname||!age){alert('Fill all fields');return;} canvas.toBlob(function(blob){const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${fileCode}_${name}_${surname}_${age}.png`; a.click(); URL.revokeObjectURL(url);});}
 
 /* EVENTS */
 document.getElementById('startBtn').addEventListener('click',startTest);
@@ -284,6 +196,7 @@ canvas.addEventListener('mouseleave',()=>{if(isDrawing){isDrawing=false; tempStr
 canvas.addEventListener('touchstart',pointerDown,{passive:false});
 canvas.addEventListener('touchmove',pointerMove,{passive:false});
 canvas.addEventListener('touchend',pointerUp,{passive:false});
+canvas.addEventListener('touchcancel',pointerUp,{passive:false});
 
 /* INIT */
 setCanvasSize(); render();
