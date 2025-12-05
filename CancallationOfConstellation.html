@@ -321,7 +321,7 @@ function placeObjects(){
         y:randBetween(0,H-40*scaleFactor)
     }));
 
-    const letters='ABCÇDEFGĞHIİJKLMNOÖPQRSŞTÜVYZ'.split('');
+    const letters='ABCDEFGHIJKLMNOPQRSTVYZ'.split('');
     placeGeneric(CONFIG.lettersCount,()=>{
         const font=CONFIG.wordFont*scaleFactor;
         const ch = letters[Math.floor(randBetween(0,letters.length))];
@@ -746,3 +746,4 @@ applyLang('en');
 </script>
 </body>
 </html>
+
