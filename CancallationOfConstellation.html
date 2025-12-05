@@ -98,10 +98,7 @@ function segIntersects(obj,x1,y1,x2,y2){
 }
 function getCanvasPoint(e){
     const rect = canvas.getBoundingClientRect();
-    return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-    };
+    return {x: e.clientX - rect.left, y: e.clientY - rect.top};
 }
 function formatTime(sec){const m=Math.floor(sec/60).toString().padStart(2,'0'); const s=(sec%60).toString().padStart(2,'0'); return `${m}:${s}`;}
 
@@ -188,7 +185,9 @@ function render(){
     }
 
     for(const s of strokes){
-        ctx.strokeStyle=testFinished?(s.starCorrect?'#2eb82e':'#d9534f'):'#007acc';
+        ctx.strokeStyle = testFinished
+            ? (s.starIds.length > 0 ? '#2eb82e' : '#d9534f')
+            : '#007acc';
         ctx.lineWidth=3;
         ctx.beginPath();
         ctx.moveTo(s.x1,s.y1);
@@ -215,16 +214,18 @@ function pointerUp(e){
     const len=segLen(startPoint.x,startPoint.y,end.x,end.y);
     if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){tempStroke=null;render();return;}
 
-    // collect all intersected small stars
+    // collect all intersected small stars (ignore demo)
     const hits=[];
     for(const s of smallStars){
-        if(s.cancelled||s.demo) continue;
+        if(s.demo) continue;
         if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);
     }
 
-    // mark all intersected stars as cancelled
-    const hitIds = [];
-    hits.forEach(s => { s.cancelled = true; hitIds.push(s.id); });
+    // mark stars as cancelled only if not yet cancelled
+    hits.forEach(s=>{ if(!s.cancelled) s.cancelled=true; });
+
+    // store all hit IDs for stroke
+    const hitIds = hits.map(s=>s.id);
 
     strokes.push({
         x1:startPoint.x,
