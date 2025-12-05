@@ -17,6 +17,9 @@ button{background:#0b74de;color:white;border:none;cursor:pointer;}
 .small{font-size:13px;color:#666;}
 #timer{width:100%;max-width:1100px;margin-top:4px;font-weight:bold;text-align:right;}
 #statsPanel{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.04);display:none;}
+#finalStats .starOrder{margin-top:8px;font-size:14px;}
+#finalStats table{width:100%;border-collapse:collapse;margin-top:8px;}
+#finalStats th, #finalStats td{border:1px solid #ddd;padding:6px;text-align:left;font-size:13px;}
 #userForm{display:none;margin-top:12px;gap:8px;background:#fff;padding:12px;border-radius:6px;width:100%;max-width:1100px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
 #userForm input{width:160px;}
 .settings{margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
@@ -72,8 +75,7 @@ button{background:#0b74de;color:white;border:none;cursor:pointer;}
 const CONFIG={
     smallStarsCount:56, demoSmallStars:2, smallStarR:11,
     largeStarsCount:52, largeStarR:20,
-    lettersCount:13, letterFont:20,
-    wordsCount:11, wordFont:16,
+    lettersCount:13, wordFont:16,
     MAX_PLACEMENT_ATTEMPTS:10000, minGap:10,
     MIN_STROKE_LEN:6, MAX_STROKE_LEN:115
 };
@@ -87,6 +89,8 @@ let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
 let tempStroke=null;
 let isDrawing=false, startPoint=null;
 
+/* track order of star cancellations */
+let starCancelOrder = []; // e.g. ['S5','S2',...]
 /* LANGUAGES */
 const LANG={
   en:{
@@ -108,13 +112,17 @@ const LANG={
       right:'Right',
       laterality:'Laterality Index',
       USN:'USN',
-      duration:'Duration'
+      duration:'Duration',
+      orderTitle:'Cancellation order (first → last)',
+      strokeTableHeaders:['Stroke #','Star Names','x1','y1','x2','y2','Direction','Correct']
     },
     csv:{
       name:'Name', surname:'Surname', age:'Age', totalSmall:'TotalSmall', demoCount:'DemoCount',
       maxScore:'MaxScore', cancelled:'Cancelled', left:'Left', right:'Right', laterality:'LateralityIndex',
-      USN:'USN', duration:'DurationSeconds', strokes:'Strokes'
+      USN:'USN', duration:'DurationSeconds', strokes:'Strokes',
+      strokeCols:['Stroke#','StarNames','x1','y1','x2','y2','Direction','Correct']
     },
+    dirStrings:{ltr:'Left->Right',rtl:'Right->Left',ttb:'Top->Bottom',btt:'Bottom->Top'},
     wordsList:["SUN","MOON","WATER","HOUSE","ROAD","SAND","BRANCH","VILLAGE","BOY","HAND"]
   },
   tr:{
@@ -136,13 +144,17 @@ const LANG={
       right:'Sağ',
       laterality:'Laterallik İndeksi',
       USN:'USN',
-      duration:'Süre'
+      duration:'Süre',
+      orderTitle:'İşaretleme sırası (ilk → son)',
+      strokeTableHeaders:['Çizgi #','Yıldız Adları','x1','y1','x2','y2','Yön','Doğru']
     },
     csv:{
       name:'İsim', surname:'Soyisim', age:'Yaş', totalSmall:'ToplamKüçükYıldız', demoCount:'DemoSayısı',
       maxScore:'MaksSkor', cancelled:'Silinen', left:'Sol', right:'Sağ', laterality:'LaterallikIndeksi',
-      USN:'USN', duration:'SüreSaniye', strokes:'Çizgiler'
+      USN:'USN', duration:'SüreSaniye', strokes:'Çizgiler',
+      strokeCols:['Çizgi#','YıldızAdları','x1','y1','x2','y2','Yön','Doğru']
     },
+    dirStrings:{ltr:'Sol→Sağ',rtl:'Sağ→Sol',ttb:'Üst→Alt',btt:'Alt→Üst'},
     wordsList:["GÜN","AY","SU","EV","YOL","KUM","DAL","KÖY","BOY","EL"]
   },
   de:{
@@ -164,14 +176,18 @@ const LANG={
       right:'Rechts',
       laterality:'Lateralisierungsindex',
       USN:'USN',
-      duration:'Dauer'
+      duration:'Dauer',
+      orderTitle:'Markierungsreihenfolge (erst → zuletzt)',
+      strokeTableHeaders:['Strich #','Sternnamen','x1','y1','x2','y2','Richtung','Korrekt']
     },
     csv:{
       name:'Name', surname:'Nachname', age:'Alter', totalSmall:'GesamtKlein', demoCount:'DemoAnzahl',
       maxScore:'MaxPunkte', cancelled:'Storniert', left:'Links', right:'Rechts', laterality:'Lateralisierungsindex',
-      USN:'USN', duration:'DauerSekunden', strokes:'Striche'
+      USN:'USN', duration:'DauerSekunden', strokes:'Striche',
+      strokeCols:['Strich#','SternNamen','x1','y1','x2','y2','Richtung','Korrekt']
     },
-    wordsList:["SONNE","MOND","WASSER","HAUS","STRAßE","SAND","AST","DORF","JUNGE","HAND"]
+    dirStrings:{ltr:'Links→Rechts',rtl:'Rechts→Links',ttb:'Oben→Unten',btt:'Unten→Oben'},
+    wordsList:["SONNE","MOND","WASSER","HAUS","STRASSE","SAND","AST","DORF","JUNGE","HAND"]
   }
 };
 let currentLang='en';
@@ -266,7 +282,7 @@ function placeObjects(){
 
     const letters='ABCÇDEFGĞHIİJKLMNOÖPQRSŞTÜVYZ'.split('');
     placeGeneric(CONFIG.lettersCount,()=>{
-        const font = CONFIG.letterFont*scaleFactor;
+        const font = CONFIG.wordFont*scaleFactor;
         const ch = letters[Math.floor(randBetween(0,letters.length))];
         return {id:`T${Math.random()}`,type:'letter',text:ch,font,w:font*0.9,h:font*1.2,x:randBetween(0,W-font),y:randBetween(0,H-font)};
     });
@@ -302,6 +318,13 @@ function render(){
                 ctx.lineTo(o.x+o.w,o.y);
                 ctx.stroke();
             }
+
+            // show star id when test finished (or always if you want)
+            if(testFinished){
+                ctx.fillStyle = '#000';
+                ctx.font = `${12*scaleFactor}px Arial`;
+                ctx.fillText(o.id, o.x, Math.max(12, o.y - 6));
+            }
         }
         else if(o.type==='large'){drawStar(cx,cy,o.r,'#000');}
         else if(o.type==='letter'){ctx.fillStyle='#000';ctx.font=`${o.font}px Arial`;ctx.fillText(o.text,o.x,o.y+o.h*0.85);}
@@ -329,6 +352,20 @@ function render(){
     }
 }
 
+/* helper: compute direction code & localized string */
+function computeDirection(x1,y1,x2,y2){
+    const dx = x2 - x1, dy = y2 - y1;
+    const absDx = Math.abs(dx), absDy = Math.abs(dy);
+    let code = 'ttb';
+    if(absDx > absDy){
+        code = dx > 0 ? 'ltr' : 'rtl';
+    } else {
+        code = dy > 0 ? 'ttb' : 'btt';
+    }
+    const s = LANG[currentLang].dirStrings;
+    return {code, text: s[code]};
+}
+
 /* POINTER HANDLERS */
 function pointerDown(e){if(!drawEnabled||testFinished)return;e.preventDefault();startPoint=getCanvasPoint(e);isDrawing=true;tempStroke={x1:startPoint.x,y1:startPoint.y,x2:startPoint.x,y2:startPoint.y};render();}
 function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing)return;e.preventDefault();const p=getCanvasPoint(e);tempStroke.x2=p.x;tempStroke.y2=p.y;render();}
@@ -338,14 +375,38 @@ function pointerUp(e){
     const len=segLen(startPoint.x,startPoint.y,end.x,end.y);
     if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){tempStroke=null;render();return;}
 
-    const hits=[];
+    // find small stars intersected (excluding demo)
+    let hits=[];
     for(const s of smallStars){
         if(s.demo) continue;
         if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);
     }
 
-    hits.forEach(s=>{ if(!s.cancelled) s.cancelled=true; });
-    const hitIds = hits.map(s=>s.id);
+    // if multiple hits, order them along the stroke start->end
+    if(hits.length > 1){
+        const sx = startPoint.x, sy = startPoint.y, ex = end.x, ey = end.y;
+        hits.sort((a,b)=>{
+            // compute projection t of center onto segment
+            const ax = a.x + a.w/2, ay = a.y + a.h/2;
+            const bx = b.x + b.w/2, by = b.y + b.h/2;
+            const tA = ((ax-sx)*(ex-sx) + (ay-sy)*(ey-sy)) / ((ex-sx)**2 + (ey-sy)**2 || 1);
+            const tB = ((bx-sx)*(ex-sx) + (by-sy)*(ey-sy)) / ((ex-sx)**2 + (ey-sy)**2 || 1);
+            return tA - tB;
+        });
+    }
+
+    // mark cancellations and record order
+    const hitIds = [];
+    for(const s of hits){
+        if(!s.cancelled){
+            s.cancelled = true;
+            // record order only first time star cancelled
+            starCancelOrder.push(s.id);
+        }
+        hitIds.push(s.id);
+    }
+
+    const dir = computeDirection(startPoint.x,startPoint.y,end.x,end.y);
 
     strokes.push({
         x1:startPoint.x,
@@ -353,7 +414,10 @@ function pointerUp(e){
         x2:end.x,
         y2:end.y,
         starIds: hitIds,
-        starCorrect: hitIds.length > 0
+        starCorrect: hitIds.length > 0,
+        directionCode: dir.code,
+        directionText: dir.text,
+        timestamp: Date.now()
     });
 
     tempStroke=null;
@@ -364,7 +428,7 @@ function pointerUp(e){
 function enableDrawing(){drawEnabled=true;}
 function disableDrawing(){drawEnabled=false;}
 function startTest(){
-    testStarted=true;testFinished=false;drawEnabled=false;strokes=[];startTime=Date.now();placeObjects();setCanvasSize();render();
+    testStarted=true;testFinished=false;drawEnabled=false;strokes=[];startTime=Date.now();starCancelOrder=[];placeObjects();setCanvasSize();render();
     enableDrawing();
     document.getElementById('finishBtn').disabled=false;
     document.getElementById('startBtn').disabled=true;
@@ -394,7 +458,7 @@ function finishTest(){
 }
 function resetTest(){
     clearInterval(countdownInterval);
-    testStarted=false;testFinished=false;drawEnabled=false;strokes=[];objects=[];smallStars=[];stats={};fileCode="";
+    testStarted=false;testFinished=false;drawEnabled=false;strokes=[];objects=[];smallStars=[];stats={};fileCode="";starCancelOrder=[];
     document.getElementById('statsPanel').style.display='none';
     document.getElementById('userForm').style.display='none';
     document.getElementById('startBtn').disabled=false;
@@ -413,14 +477,47 @@ function computeStats(){
     if(lateralityIndex<=0.46) USN='Left';
     else if(lateralityIndex>=0.54) USN='Right';
     stats={totalSmall:smallStars.length,demoCount:smallStars.filter(s=>s.demo).length,scoredTotal:CONFIG.smallStarsCount-cancelled,cancelled,cancelledLeft:leftCancelled,cancelledRight:rightCancelled,lateralityIndex,USN,durationSeconds:Math.round((Date.now()-startTime)/1000)};
+
     const r = LANG[currentLang].results;
-    document.getElementById('finalStats').innerHTML=
-      `<strong>${r.title}</strong><br>`+
+    // build final stats html
+    let html = `<strong>${r.title}</strong><br>`+
       `${r.cancelled}: ${cancelled}/${scored.length}<br>`+
       `${r.left}: ${leftCancelled} | ${r.right}: ${rightCancelled}<br>`+
       `${r.laterality}: ${lateralityIndex.toFixed(2)}<br>`+
       `${r.USN}: ${USN}<br>`+
       `${r.duration}: ${stats.durationSeconds}s`;
+
+    // show star cancel order
+    html += `<div class="starOrder"><strong>${r.orderTitle}:</strong> `;
+    if(starCancelOrder.length===0) html += '—';
+    else html += starCancelOrder.join(' → ');
+    html += `</div>`;
+
+    // strokes table
+    const headers = r.strokeTableHeaders;
+    html += `<div style="overflow:auto"><table><thead><tr>`;
+    for(const h of headers) html += `<th>${h}</th>`;
+    html += `</tr></thead><tbody>`;
+    strokes.forEach((s,idx)=>{
+      const starNames = s.starIds.length ? s.starIds.join('|') : '';
+      const dirText = s.directionText || computeDirection(s.x1,s.y1,s.x2,s.y2).text;
+      const correct = s.starCorrect ? 'True' : 'False';
+      html += `<tr><td>${idx+1}</td><td>${starNames}</td><td>${Math.round(s.x1)}</td><td>${Math.round(s.y1)}</td><td>${Math.round(s.x2)}</td><td>${Math.round(s.y2)}</td><td>${dirText}</td><td>${correct}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+
+    document.getElementById('finalStats').innerHTML = html;
+}
+
+/* CSV helpers: escape values with quotes if needed */
+function csvSafe(val){
+  if(val === null || val === undefined) return '';
+  const s = String(val);
+  // If contains comma or quote or newline, wrap in quotes and escape quotes
+  if(/[,"\n\r]/.test(s)){
+    return `"${s.replace(/"/g,'""')}"`;
+  }
+  return s;
 }
 
 function downloadCSV(){
@@ -430,25 +527,41 @@ function downloadCSV(){
     if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
     const c = LANG[currentLang].csv;
     let rows=[];
-    rows.push(
-      [c.name,name],
-      [c.surname,surname],
-      [c.age,age],
-      [],
-      [c.totalSmall,stats.totalSmall],
-      [c.demoCount,stats.demoCount],
-      [c.maxScore,stats.scoredTotal],
-      [c.cancelled,stats.cancelled],
-      [c.left,stats.cancelledLeft],
-      [c.right,stats.cancelledRight],
-      [c.laterality,stats.lateralityIndex],
-      [c.USN,stats.USN],
-      [c.duration,stats.durationSeconds],
-      [],
-      [c.strokes]
-    );
-    strokes.forEach(s=>{rows.push([s.starIds.join('|'),s.x1,s.y1,s.x2,s.y2,s.starCorrect]);});
-    const csvContent = '\uFEFF' + rows.map(r=>r.join(',')).join('\n'); // UTF-8 BOM fix
+    // basic info
+    rows.push([c.name,name]);
+    rows.push([c.surname,surname]);
+    rows.push([c.age,age]);
+    rows.push([]); // blank
+    rows.push([c.totalSmall,stats.totalSmall]);
+    rows.push([c.demoCount,stats.demoCount]);
+    rows.push([c.maxScore,stats.scoredTotal]);
+    rows.push([c.cancelled,stats.cancelled]);
+    rows.push([c.left,stats.cancelledLeft]);
+    rows.push([c.right,stats.cancelledRight]);
+    rows.push([c.laterality,stats.lateralityIndex]);
+    rows.push([c.USN,stats.USN]);
+    rows.push([c.duration,stats.durationSeconds]);
+    rows.push([]); // blank
+    rows.push([c.strokes]);
+
+    // stroke header row (localized)
+    rows.push(c.strokeCols);
+
+    // per-stroke rows
+    strokes.forEach((s,idx)=>{
+      const starNames = s.starIds.length ? s.starIds.join('|') : '';
+      const dirText = s.directionText || computeDirection(s.x1,s.y1,s.x2,s.y2).text;
+      const correct = s.starCorrect ? 'True' : 'False';
+      rows.push([idx+1, starNames, Math.round(s.x1), Math.round(s.y1), Math.round(s.x2), Math.round(s.y2), dirText, correct]);
+    });
+
+    // add cancellation order as a separate small section
+    rows.push([]);
+    const orderHeader = LANG[currentLang].results.orderTitle || 'Order';
+    rows.push([orderHeader, starCancelOrder.join(' → ')]);
+
+    // Build CSV, include BOM for Excel & Turkish chars
+    const csvContent = '\uFEFF' + rows.map(r=>r.map(csvSafe).join(',')).join('\r\n');
     const blob=new Blob([csvContent],{type:'text/csv;charset=utf-8;'});
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
@@ -456,6 +569,7 @@ function downloadCSV(){
     a.click();
 }
 
+/* PNG export unchanged */
 function downloadPNG(){
     const name=document.getElementById('name').value.trim();
     const surname=document.getElementById('surname').value.trim();
