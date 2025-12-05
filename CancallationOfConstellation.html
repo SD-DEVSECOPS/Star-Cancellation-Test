@@ -69,6 +69,7 @@ let testStarted=false, testFinished=false, drawEnabled=false, startTime=null, ti
 let fileCode="";
 let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
 let tempStroke=null;
+let isDrawing=false, startPoint=null;
 
 /* UTILS */
 function setCanvasSize(){
@@ -97,8 +98,7 @@ function segIntersects(obj,x1,y1,x2,y2){
 }
 function getCanvasPoint(e){
     const rect=canvas.getBoundingClientRect();
-    const ev=(e.touches&&e.touches[0])? e.touches[0] : e;
-    return {x:(ev.clientX-rect.left), y:(ev.clientY-rect.top)};
+    return {x: e.clientX - rect.left, y: e.clientY - rect.top};
 }
 function formatTime(sec){const m=Math.floor(sec/60).toString().padStart(2,'0'); const s=(sec%60).toString().padStart(2,'0'); return `${m}:${s}`;}
 
@@ -129,24 +129,29 @@ function placeObjects(){
         objects.push(obj); smallStars.push(obj);
     }
     const placeGeneric=(count,propsGen)=>{for(let i=0;i<count;i++){let obj=null; for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){ const pos=propsGen(); obj={...pos}; let ok=true; for(const o of objects) if(rectOverlap({...pos},o)) {ok=false; break;} if(ok) break;} objects.push(obj);}};
+    
     placeGeneric(CONFIG.largeStarsCount,()=>({
-        id:`L${Math.random()}`, type:'large', r:CONFIG.largeStarR*scaleFactor,
-        w:CONFIG.largeStarR*2*scaleFactor, h:CONFIG.largeStarR*2*scaleFactor,
-        x:randBetween(0,W-40*scaleFactor), y:randBetween(0,H-40*scaleFactor)
+        id:`L${Math.random()}`,
+        type:'large',
+        r:CONFIG.largeStarR*scaleFactor,
+        w:CONFIG.largeStarR*2*scaleFactor,
+        h:CONFIG.largeStarR*2*scaleFactor,
+        x:randBetween(0,W-40*scaleFactor),
+        y:randBetween(0,H-40*scaleFactor)
     }));
+
     const letters='ABCÇDEFGĞHIİJKLMNOÖPQRSŞTÜVYZ'.split('');
     placeGeneric(CONFIG.lettersCount,()=>{
         const font = CONFIG.letterFont*scaleFactor;
         const ch = letters[Math.floor(randBetween(0,letters.length))];
-        return {id:`T${Math.random()}`, type:'letter', text:ch, font, w:font*0.9, h:font*1.2,
-                x:randBetween(0,W-font), y:randBetween(0,H-font)};
+        return {id:`T${Math.random()}`,type:'letter',text:ch,font,w:font*0.9,h:font*1.2,x:randBetween(0,W-font),y:randBetween(0,H-font)};
     });
+
     placeGeneric(CONFIG.wordsList.length,()=>{
         const font = CONFIG.wordFont*scaleFactor;
         const t = CONFIG.wordsList[Math.floor(randBetween(0,CONFIG.wordsList.length))];
         const w = Math.max(20,t.length*font*0.6), h = font*1.2;
-        return {id:`W${Math.random()}`, type:'word', text:t, font, w, h,
-                x:randBetween(0,W-w), y:randBetween(0,H-h)};
+        return {id:`W${Math.random()}`,type:'word',text:t,font,w,h,x:randBetween(0,W-w),y:randBetween(0,H-h)};
     });
 }
 
@@ -168,20 +173,20 @@ function render(){
     if(tempStroke){ctx.strokeStyle='#007acc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(tempStroke.x1,tempStroke.y1); ctx.lineTo(tempStroke.x2,tempStroke.y2); ctx.stroke();}
 }
 
-/* POINTER FIX FOR MOBILE & DESKTOP */
-let isDrawing=false, startPoint=null;
-function pointerDown(e){if(!drawEnabled||testFinished) return; e.preventDefault(); startPoint=getCanvasPoint(e); isDrawing=true; tempStroke={x1:startPoint.x,y1:startPoint.y,x2:startPoint.x,y2:startPoint.y}; render();}
-function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing) return; e.preventDefault(); const p=getCanvasPoint(e); tempStroke.x2=p.x; tempStroke.y2=p.y; render();}
-function pointerUp(e){if(!drawEnabled||testFinished||!isDrawing) return; e.preventDefault(); const end=getCanvasPoint(e); const len=segLen(startPoint.x,startPoint.y,end.x,end.y); isDrawing=false; tempStroke=null; if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){render(); return;} const hits=[]; for(const s of smallStars){if(s.cancelled||s.demo) continue; if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);} let chosen=null; if(hits.length>0){const midx=(startPoint.x+end.x)/2, midy=(startPoint.y+end.y)/2; hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2)); chosen=hits[0]; chosen.cancelled=true;} strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen}); render();}
+/* POINTER (Works on mobile and desktop) */
+function pointerDown(e){if(!drawEnabled||testFinished) return;e.preventDefault();startPoint=getCanvasPoint(e);isDrawing=true;tempStroke={x1:startPoint.x,y1:startPoint.y,x2:startPoint.x,y2:startPoint.y}; render();}
+function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();const p=getCanvasPoint(e);tempStroke.x2=p.x;tempStroke.y2=p.y;render();}
+function pointerUp(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();const end=getCanvasPoint(e);isDrawing=false;tempStroke=null; const len=segLen(startPoint.x,startPoint.y,end.x,end.y);if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){render();return;} const hits=[]; for(const s of smallStars){if(s.cancelled||s.demo) continue;if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);} let chosen=null; if(hits.length>0){const midx=(startPoint.x+end.x)/2,midy=(startPoint.y+end.y)/2; hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2)); chosen=hits[0]; chosen.cancelled=true;} strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen}); render();}
 
-/* TEST CONTROL, RESET, STATS, DOWNLOAD */
-function enableDrawing(){drawEnabled=true;} function disableDrawing(){drawEnabled=false;}
-function startTest(){testStarted=true; testFinished=false; drawEnabled=false; strokes=[]; startTime=Date.now(); placeObjects(); setCanvasSize(); render(); enableDrawing(); document.getElementById('finishBtn').disabled=false; document.getElementById('startBtn').disabled=true; let remainingSeconds=parseFloat(document.getElementById('timeoutMinutes').value)*60; document.getElementById('timer').textContent=`Time Left: ${formatTime(remainingSeconds)}`; clearInterval(countdownInterval); countdownInterval=setInterval(()=>{remainingSeconds--; document.getElementById('timer').textContent=`Time Left: ${formatTime(remainingSeconds)}`; if(remainingSeconds<=0){clearInterval(countdownInterval); finishTest(); alert("Time exceeded. Test auto-finished.");}},1000);}
-function finishTest(){if(!testStarted||testFinished)return; testFinished=true; disableDrawing(); render(); computeStats(); document.getElementById('statsPanel').style.display='block'; document.getElementById('userForm').style.display='flex'; document.getElementById('finishBtn').disabled=true; document.getElementById('startBtn').disabled=false; fileCode=Math.floor(Math.random()*1e8).toString().padStart(8,'0'); clearInterval(countdownInterval); document.getElementById('timer').textContent='Time Left: 00:00';}
-function resetTest(){clearTimeout(timeoutHandle);clearInterval(countdownInterval);testStarted=false; testFinished=false; drawEnabled=false; strokes=[]; objects=[]; smallStars=[]; stats={};fileCode=""; document.getElementById('statsPanel').style.display='none'; document.getElementById('userForm').style.display='none'; document.getElementById('startBtn').disabled=false; document.getElementById('finishBtn').disabled=true; document.getElementById('timer').textContent='Time Left: --:--'; setCanvasSize(); render();}
-function computeStats(){const scored=smallStars.filter(s=>!s.demo),cancelled=scored.filter(s=>s.cancelled).length,leftCancelled=scored.filter(s=>s.cancelled&&(s.x+s.w/2)<(canvas.width/DPR)/2).length,rightCancelled=cancelled-leftCancelled,lateralityIndex=cancelled>0?leftCancelled/cancelled:0;let USN='None';if(lateralityIndex<=0.46) USN='Left';else if(lateralityIndex>=0.54) USN='Right'; stats={totalSmall:smallStars.length,demoCount:smallStars.filter(s=>s.demo).length,scoredTotal:54,cancelled,cancelledLeft:leftCancelled,cancelledRight:rightCancelled,lateralityIndex,USN,durationSeconds:Math.round((Date.now()-startTime)/1000)}; document.getElementById('finalStats').innerHTML=`<strong>Results</strong><br>Cancelled: ${cancelled}/${scored.length}<br>Left: ${leftCancelled} | Right: ${rightCancelled}<br>Laterality Index: ${lateralityIndex.toFixed(2)}<br>USN: ${USN}<br>Duration: ${stats.durationSeconds}s`;}
-function downloadCSV(){const name=document.getElementById('name').value.trim(),surname=document.getElementById('surname').value.trim(),age=document.getElementById('age').value.trim();if(!name||!surname||!age){alert('Fill all fields');return;}let rows=[]; rows.push(['Name',name],['Surname',surname],['Age',age],[],['TotalSmall',stats.totalSmall],['DemoCount',stats.demoCount],['MaxScore',stats.scoredTotal],['Cancelled',stats.cancelled],['Left',stats.cancelledLeft],['Right',stats.cancelledRight],['LateralityIndex',stats.lateralityIndex],['USN',stats.USN],['DurationSeconds',stats.durationSeconds],[],['Strokes']); strokes.forEach(s=>{rows.push([s.starId,s.x1,s.y1,s.x2,s.y2,s.starCorrect]);}); const csv=rows.map(r=>r.join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${fileCode}_${name}_${surname}_${age}.csv`; a.click();}
-function downloadPNG(){const name=document.getElementById('name').value.trim(),surname=document.getElementById('surname').value.trim(),age=document.getElementById('age').value.trim();if(!name||!surname||!age){alert('Fill all fields');return;} canvas.toBlob(function(blob){const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${fileCode}_${name}_${surname}_${age}.png`; a.click(); URL.revokeObjectURL(url);});}
+/* TEST CONTROL, RESET, STATS, CSV/PNG download */
+function enableDrawing(){drawEnabled=true;}
+function disableDrawing(){drawEnabled=false;}
+function startTest(){testStarted=true; testFinished=false; drawEnabled=false; strokes=[]; startTime=Date.now(); placeObjects(); setCanvasSize(); render(); enableDrawing(); document.getElementById('finishBtn').disabled=false; document.getElementById('startBtn').disabled=true; const minutes=parseFloat(document.getElementById('timeoutMinutes').value); let remainingSeconds=minutes*60; document.getElementById('timer').textContent=`Time Left: ${formatTime(remainingSeconds)}`; clearInterval(countdownInterval); countdownInterval=setInterval(()=>{remainingSeconds--; document.getElementById('timer').textContent=`Time Left: ${formatTime(remainingSeconds)}`; if(remainingSeconds<=0){clearInterval(countdownInterval);finishTest(); alert("Time exceeded. Test auto-finished.");}},1000);}
+function finishTest(){if(!testStarted||testFinished)return; testFinished=true; disableDrawing(); render(); computeStats(); document.getElementById('statsPanel').style.display='block'; document.getElementById('userForm').style.display='flex'; document.getElementById('finishBtn').disabled=true; document.getElementById('startBtn').disabled=false; fileCode=Math.floor(Math.random()*1e8).toString().padStart(8,'0'); clearInterval(countdownInterval); document.getElementById('timer').textContent=`Time Left: 00:00`;}
+function resetTest(){clearTimeout(timeoutHandle); clearInterval(countdownInterval); testStarted=false; testFinished=false; drawEnabled=false; strokes=[]; objects=[]; smallStars=[]; stats={}; fileCode=""; document.getElementById('statsPanel').style.display='none'; document.getElementById('userForm').style.display='none'; document.getElementById('startBtn').disabled=false; document.getElementById('finishBtn').disabled=true; document.getElementById('timer').textContent=`Time Left: --:--`; setCanvasSize(); render();}
+function computeStats(){const scored=smallStars.filter(s=>!s.demo),cancelled=scored.filter(s=>s.cancelled).length; const leftCancelled=scored.filter(s=>s.cancelled&&(s.x+s.w/2)<(canvas.width/DPR)/2).length; const rightCancelled=cancelled-leftCancelled; const lateralityIndex = cancelled>0 ? leftCancelled/cancelled : 0; let USN='None'; if(lateralityIndex<=0.46) USN='Left'; else if(lateralityIndex>=0.54) USN='Right'; stats={totalSmall:smallStars.length,demoCount:smallStars.filter(s=>s.demo).length,scoredTotal:54,cancelled,cancelledLeft:leftCancelled,cancelledRight:rightCancelled,lateralityIndex,USN,durationSeconds:Math.round((Date.now()-startTime)/1000)}; document.getElementById('finalStats').innerHTML=`<strong>Results</strong><br>Cancelled: ${cancelled}/${scored.length}<br>Left: ${leftCancelled} | Right: ${rightCancelled}<br>Laterality Index: ${lateralityIndex.toFixed(2)}<br>USN: ${USN}<br>Duration: ${stats.durationSeconds}s`;}
+function downloadCSV(){const name=document.getElementById('name').value.trim(); const surname=document.getElementById('surname').value.trim(); const age=document.getElementById('age').value.trim(); if(!name||!surname||!age){alert('Fill all fields');return;} let rows=[]; rows.push(['Name',name],['Surname',surname],['Age',age],[],['TotalSmall',stats.totalSmall],['DemoCount',stats.demoCount],['MaxScore',stats.scoredTotal],['Cancelled',stats.cancelled],['Left',stats.cancelledLeft],['Right',stats.cancelledRight],['LateralityIndex',stats.lateralityIndex],['USN',stats.USN],['DurationSeconds',stats.durationSeconds],[],['Strokes']); strokes.forEach(s=>{rows.push([s.starId,s.x1,s.y1,s.x2,s.y2,s.starCorrect]);}); const csv=rows.map(r=>r.join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`${fileCode}_${name}_${surname}_${age}.csv`; a.click();}
+function downloadPNG(){const name=document.getElementById('name').value.trim(); const surname=document.getElementById('surname').value.trim(); const age=document.getElementById('age').value.trim(); if(!name||!surname||!age){alert('Fill all fields');return;} canvas.toBlob(function(blob){const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`${fileCode}_${name}_${surname}_${age}.png`; a.click(); URL.revokeObjectURL(url);});}
 
 /* EVENTS */
 document.getElementById('startBtn').addEventListener('click',startTest);
@@ -189,14 +194,12 @@ document.getElementById('finishBtn').addEventListener('click',finishTest);
 document.getElementById('resetBtn').addEventListener('click',resetTest);
 document.getElementById('downloadCsv').addEventListener('click',downloadCSV);
 document.getElementById('downloadPng').addEventListener('click',downloadPNG);
-canvas.addEventListener('mousedown',pointerDown);
-canvas.addEventListener('mousemove',pointerMove);
-canvas.addEventListener('mouseup',pointerUp);
-canvas.addEventListener('mouseleave',()=>{if(isDrawing){isDrawing=false; tempStroke=null; render();}});
-canvas.addEventListener('touchstart',pointerDown,{passive:false});
-canvas.addEventListener('touchmove',pointerMove,{passive:false});
-canvas.addEventListener('touchend',pointerUp,{passive:false});
-canvas.addEventListener('touchcancel',pointerUp,{passive:false});
+
+canvas.addEventListener('pointerdown', pointerDown);
+canvas.addEventListener('pointermove', pointerMove);
+canvas.addEventListener('pointerup', pointerUp);
+canvas.addEventListener('pointercancel', pointerUp);
+canvas.addEventListener('pointerleave', () => { if(isDrawing){ isDrawing=false; tempStroke=null; render(); } });
 
 /* INIT */
 setCanvasSize(); render();
