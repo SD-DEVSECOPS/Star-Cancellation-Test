@@ -73,7 +73,7 @@ const CONFIG={
     smallStarsCount:56, demoSmallStars:2, smallStarR:11,
     largeStarsCount:52, largeStarR:20,
     lettersCount:13, letterFont:20,
-    wordsCount:11, wordsList:["GÜN","AY","SU","EV","YOL","KUM","DAL","KÖY","BOY","EL"], wordFont:16,
+    wordsCount:11, wordFont:16,
     MAX_PLACEMENT_ATTEMPTS:10000, minGap:10,
     MIN_STROKE_LEN:6, MAX_STROKE_LEN:115
 };
@@ -81,7 +81,7 @@ const CONFIG={
 /* STATE */
 const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
 let DPR=window.devicePixelRatio||1, objects=[], smallStars=[], strokes=[], rng=Math.random;
-let testStarted=false, testFinished=false, drawEnabled=false, startTime=null, timeoutHandle=null, countdownInterval=null, stats={};
+let testStarted=false, testFinished=false, drawEnabled=false, startTime=null, countdownInterval=null, stats={};
 let fileCode="";
 let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
 let tempStroke=null;
@@ -100,7 +100,22 @@ const LANG={
     finishBtn:'Finish Test',
     resetBtn:'Reset Test',
     alertFill:'Fill all fields',
-    alertTime:'Time exceeded. Test auto-finished.'
+    alertTime:'Time exceeded. Test auto-finished.',
+    results:{
+      title:'Results',
+      cancelled:'Cancelled',
+      left:'Left',
+      right:'Right',
+      laterality:'Laterality Index',
+      USN:'USN',
+      duration:'Duration'
+    },
+    csv:{
+      name:'Name', surname:'Surname', age:'Age', totalSmall:'TotalSmall', demoCount:'DemoCount',
+      maxScore:'MaxScore', cancelled:'Cancelled', left:'Left', right:'Right', laterality:'LateralityIndex',
+      USN:'USN', duration:'DurationSeconds', strokes:'Strokes'
+    },
+    wordsList:["SUN","MOON","WATER","HOUSE","ROAD","SAND","BRANCH","VILLAGE","BOY","HAND"]
   },
   tr:{
     pageTitle:'Yıldız Silme Testi',
@@ -113,7 +128,22 @@ const LANG={
     finishBtn:'Testi Bitir',
     resetBtn:'Testi Sıfırla',
     alertFill:'Tüm alanları doldurun',
-    alertTime:'Süre doldu. Test otomatik olarak bitirildi.'
+    alertTime:'Süre doldu. Test otomatik olarak bitirildi.',
+    results:{
+      title:'Sonuçlar',
+      cancelled:'Silinenler',
+      left:'Sol',
+      right:'Sağ',
+      laterality:'Laterallik İndeksi',
+      USN:'USN',
+      duration:'Süre'
+    },
+    csv:{
+      name:'İsim', surname:'Soyisim', age:'Yaş', totalSmall:'ToplamKüçükYıldız', demoCount:'DemoSayısı',
+      maxScore:'MaksSkor', cancelled:'Silinen', left:'Sol', right:'Sağ', laterality:'LaterallikIndeksi',
+      USN:'USN', duration:'SüreSaniye', strokes:'Çizgiler'
+    },
+    wordsList:["GÜN","AY","SU","EV","YOL","KUM","DAL","KÖY","BOY","EL"]
   },
   de:{
     pageTitle:'Stern-Streich-Test',
@@ -126,7 +156,22 @@ const LANG={
     finishBtn:'Test Beenden',
     resetBtn:'Test Zurücksetzen',
     alertFill:'Alle Felder ausfüllen',
-    alertTime:'Zeit überschritten. Test automatisch beendet.'
+    alertTime:'Zeit überschritten. Test automatisch beendet.',
+    results:{
+      title:'Ergebnisse',
+      cancelled:'Storniert',
+      left:'Links',
+      right:'Rechts',
+      laterality:'Lateralisierungsindex',
+      USN:'USN',
+      duration:'Dauer'
+    },
+    csv:{
+      name:'Name', surname:'Nachname', age:'Alter', totalSmall:'GesamtKlein', demoCount:'DemoAnzahl',
+      maxScore:'MaxPunkte', cancelled:'Storniert', left:'Links', right:'Rechts', laterality:'Lateralisierungsindex',
+      USN:'USN', duration:'DauerSekunden', strokes:'Striche'
+    },
+    wordsList:["SONNE","MOND","WASSER","HAUS","STRAßE","SAND","AST","DORF","JUNGE","HAND"]
   }
 };
 let currentLang='en';
@@ -228,7 +273,7 @@ function placeObjects(){
 
     placeGeneric(CONFIG.wordsCount,()=>{
         const font = CONFIG.wordFont*scaleFactor;
-        const t = CONFIG.wordsList[Math.floor(randBetween(0,CONFIG.wordsList.length))];
+        const t = LANG[currentLang].wordsList[Math.floor(randBetween(0, LANG[currentLang].wordsList.length))];
         const w = Math.max(20,t.length*font*0.6), h = font*1.2;
         return {id:`W${Math.random()}`,type:'word',text:t,font,w,h,x:randBetween(0,W-w),y:randBetween(0,H-h)};
     });
@@ -348,7 +393,7 @@ function finishTest(){
     document.getElementById('timer').textContent=`Time Left: 00:00`;
 }
 function resetTest(){
-    clearTimeout(timeoutHandle); clearInterval(countdownInterval);
+    clearInterval(countdownInterval);
     testStarted=false;testFinished=false;drawEnabled=false;strokes=[];objects=[];smallStars=[];stats={};fileCode="";
     document.getElementById('statsPanel').style.display='none';
     document.getElementById('userForm').style.display='none';
@@ -357,6 +402,8 @@ function resetTest(){
     document.getElementById('timer').textContent=`Time Left: --:--`;
     setCanvasSize(); render();
 }
+
+/* STATS & CSV/PNG */
 function computeStats(){
     const scored=smallStars.filter(s=>!s.demo),cancelled=scored.filter(s=>s.cancelled).length;
     const leftCancelled=scored.filter(s=>s.cancelled&&(s.x+s.w/2)<(canvas.width/DPR)/2).length;
@@ -366,23 +413,49 @@ function computeStats(){
     if(lateralityIndex<=0.46) USN='Left';
     else if(lateralityIndex>=0.54) USN='Right';
     stats={totalSmall:smallStars.length,demoCount:smallStars.filter(s=>s.demo).length,scoredTotal:CONFIG.smallStarsCount-cancelled,cancelled,cancelledLeft:leftCancelled,cancelledRight:rightCancelled,lateralityIndex,USN,durationSeconds:Math.round((Date.now()-startTime)/1000)};
-    document.getElementById('finalStats').innerHTML=`<strong>Results</strong><br>Cancelled: ${cancelled}/${scored.length}<br>Left: ${leftCancelled} | Right: ${rightCancelled}<br>Laterality Index: ${lateralityIndex.toFixed(2)}<br>USN: ${USN}<br>Duration: ${stats.durationSeconds}s`;
+    const r = LANG[currentLang].results;
+    document.getElementById('finalStats').innerHTML=
+      `<strong>${r.title}</strong><br>`+
+      `${r.cancelled}: ${cancelled}/${scored.length}<br>`+
+      `${r.left}: ${leftCancelled} | ${r.right}: ${rightCancelled}<br>`+
+      `${r.laterality}: ${lateralityIndex.toFixed(2)}<br>`+
+      `${r.USN}: ${USN}<br>`+
+      `${r.duration}: ${stats.durationSeconds}s`;
 }
+
 function downloadCSV(){
     const name=document.getElementById('name').value.trim();
     const surname=document.getElementById('surname').value.trim();
     const age=document.getElementById('age').value.trim();
     if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
+    const c = LANG[currentLang].csv;
     let rows=[];
-    rows.push(['Name',name],['Surname',surname],['Age',age],[],['TotalSmall',stats.totalSmall],['DemoCount',stats.demoCount],['MaxScore',stats.scoredTotal],['Cancelled',stats.cancelled],['Left',stats.cancelledLeft],['Right',stats.cancelledRight],['LateralityIndex',stats.lateralityIndex],['USN',stats.USN],['DurationSeconds',stats.durationSeconds],[],['Strokes']);
+    rows.push(
+      [c.name,name],
+      [c.surname,surname],
+      [c.age,age],
+      [],
+      [c.totalSmall,stats.totalSmall],
+      [c.demoCount,stats.demoCount],
+      [c.maxScore,stats.scoredTotal],
+      [c.cancelled,stats.cancelled],
+      [c.left,stats.cancelledLeft],
+      [c.right,stats.cancelledRight],
+      [c.laterality,stats.lateralityIndex],
+      [c.USN,stats.USN],
+      [c.duration,stats.durationSeconds],
+      [],
+      [c.strokes]
+    );
     strokes.forEach(s=>{rows.push([s.starIds.join('|'),s.x1,s.y1,s.x2,s.y2,s.starCorrect]);});
-    const csv=rows.map(r=>r.join(',')).join('\n');
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const csvContent = '\uFEFF' + rows.map(r=>r.join(',')).join('\n'); // UTF-8 BOM fix
+    const blob=new Blob([csvContent],{type:'text/csv;charset=utf-8;'});
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
     a.download=`${fileCode}_${name}_${surname}_${age}.csv`;
     a.click();
 }
+
 function downloadPNG(){
     const name=document.getElementById('name').value.trim();
     const surname=document.getElementById('surname').value.trim();
