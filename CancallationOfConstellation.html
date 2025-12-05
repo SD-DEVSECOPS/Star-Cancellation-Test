@@ -86,11 +86,12 @@ let DPR=window.devicePixelRatio||1, objects=[], smallStars=[], strokes=[], rng=M
 let testStarted=false, testFinished=false, drawEnabled=false, startTime=null, countdownInterval=null, stats={};
 let fileCode="";
 let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
+
 let tempStroke=null;
 let isDrawing=false, startPoint=null;
 
-/* track order of star cancellations */
-let starCancelOrder = []; // e.g. ['S5','S2',...]
+let starCancelOrder = [];
+
 /* LANGUAGES */
 const LANG={
   en:{
@@ -113,18 +114,23 @@ const LANG={
       laterality:'Laterality Index',
       USN:'USN',
       duration:'Duration',
+      avgtime:'Avg time per correct star',
       orderTitle:'Cancellation order (first → last)',
       strokeTableHeaders:['Stroke #','Star Names','x1','y1','x2','y2','Direction','Correct']
     },
     csv:{
-      name:'Name', surname:'Surname', age:'Age', totalSmall:'TotalSmall', demoCount:'DemoCount',
-      maxScore:'MaxScore', cancelled:'Cancelled', left:'Left', right:'Right', laterality:'LateralityIndex',
-      USN:'USN', duration:'DurationSeconds', strokes:'Strokes',
+      name:'Name',surname:'Surname',age:'Age',
+      totalSmall:'TotalSmall',demoCount:'DemoCount',maxScore:'MaxScore',
+      cancelled:'Cancelled',left:'Left',right:'Right',
+      laterality:'LateralityIndex',USN:'USN',
+      duration:'DurationSeconds',avg:'AvgPerCorrect',
+      strokes:'Strokes',
       strokeCols:['Stroke#','StarNames','x1','y1','x2','y2','Direction','Correct']
     },
     dirStrings:{ltr:'Left->Right',rtl:'Right->Left',ttb:'Top->Bottom',btt:'Bottom->Top'},
     wordsList:["SUN","MOON","WATER","HOUSE","ROAD","SAND","BRANCH","VILLAGE","BOY","HAND"]
   },
+
   tr:{
     pageTitle:'Yıldız Silme Testi',
     labelSmallStars:'Küçük yıldızlar (50-80):',
@@ -145,18 +151,23 @@ const LANG={
       laterality:'Laterallik İndeksi',
       USN:'USN',
       duration:'Süre',
+      avgtime:'Doğru başına ort. süre',
       orderTitle:'İşaretleme sırası (ilk → son)',
       strokeTableHeaders:['Çizgi #','Yıldız Adları','x1','y1','x2','y2','Yön','Doğru']
     },
     csv:{
-      name:'İsim', surname:'Soyisim', age:'Yaş', totalSmall:'ToplamKüçükYıldız', demoCount:'DemoSayısı',
-      maxScore:'MaksSkor', cancelled:'Silinen', left:'Sol', right:'Sağ', laterality:'LaterallikIndeksi',
-      USN:'USN', duration:'SüreSaniye', strokes:'Çizgiler',
+      name:'İsim',surname:'Soyisim',age:'Yaş',
+      totalSmall:'ToplamKüçükYıldız',demoCount:'DemoSayısı',maxScore:'MaksSkor',
+      cancelled:'Silinen',left:'Sol',right:'Sağ',
+      laterality:'LaterallikIndeksi',USN:'USN',
+      duration:'SüreSaniye',avg:'OrtSaniye',
+      strokes:'Çizgiler',
       strokeCols:['Çizgi#','YıldızAdları','x1','y1','x2','y2','Yön','Doğru']
     },
     dirStrings:{ltr:'Sol→Sağ',rtl:'Sağ→Sol',ttb:'Üst→Alt',btt:'Alt→Üst'},
     wordsList:["GÜN","AY","SU","EV","YOL","KUM","DAL","KÖY","BOY","EL"]
   },
+
   de:{
     pageTitle:'Stern-Streich-Test',
     labelSmallStars:'Kleine Sterne (50-80):',
@@ -177,19 +188,24 @@ const LANG={
       laterality:'Lateralisierungsindex',
       USN:'USN',
       duration:'Dauer',
+      avgtime:'Durchschn. Zeit pro Treffer',
       orderTitle:'Markierungsreihenfolge (erst → zuletzt)',
       strokeTableHeaders:['Strich #','Sternnamen','x1','y1','x2','y2','Richtung','Korrekt']
     },
     csv:{
-      name:'Name', surname:'Nachname', age:'Alter', totalSmall:'GesamtKlein', demoCount:'DemoAnzahl',
-      maxScore:'MaxPunkte', cancelled:'Storniert', left:'Links', right:'Rechts', laterality:'Lateralisierungsindex',
-      USN:'USN', duration:'DauerSekunden', strokes:'Striche',
+      name:'Name',surname:'Nachname',age:'Alter',
+      totalSmall:'GesamtKlein',demoCount:'DemoAnzahl',maxScore:'MaxPunkte',
+      cancelled:'Storniert',left:'Links',right:'Rechts',
+      laterality:'Lateralisierungsindex',USN:'USN',
+      duration:'DauerSekunden',avg:'SchnittProTreffer',
+      strokes:'Striche',
       strokeCols:['Strich#','SternNamen','x1','y1','x2','y2','Richtung','Korrekt']
     },
     dirStrings:{ltr:'Links→Rechts',rtl:'Rechts→Links',ttb:'Oben→Unten',btt:'Unten→Oben'},
     wordsList:["SONNE","MOND","WASSER","HAUS","STRASSE","SAND","AST","DORF","JUNGE","HAND"]
   }
 };
+
 let currentLang='en';
 function applyLang(lang){
   currentLang=lang;
@@ -222,7 +238,7 @@ function rectOverlap(a,b,pad=CONFIG.minGap*scaleFactor){
 }
 function segLen(x1,y1,x2,y2){return Math.hypot(x2-x1,y2-y1);}
 function segIntersects(obj,x1,y1,x2,y2){
-    const samples=8;
+    const samples=10;
     for(let i=0;i<=samples;i++){
         const t=i/samples;
         const px=x1+(x2-x1)*t, py=y1+(y2-y1)*t;
@@ -231,10 +247,14 @@ function segIntersects(obj,x1,y1,x2,y2){
     return false;
 }
 function getCanvasPoint(e){
-    const rect = canvas.getBoundingClientRect();
-    return {x: e.clientX - rect.left, y: e.clientY - rect.top};
+    const r=canvas.getBoundingClientRect();
+    return {x:e.clientX-r.left, y:e.clientY-r.top};
 }
-function formatTime(sec){const m=Math.floor(sec/60).toString().padStart(2,'0'); const s=(sec%60).toString().padStart(2,'0'); return `${m}:${s}`;}
+function formatTime(sec){
+    const m=Math.floor(sec/60).toString().padStart(2,'0');
+    const s=(sec%60).toString().padStart(2,'0');
+    return `${m}:${s}`;
+}
 
 /* PLACEMENT */
 function placeObjects(){
@@ -245,31 +265,52 @@ function placeObjects(){
 
     objects=[]; smallStars=[];
     const W=canvas.width/DPR, H=canvas.height/DPR;
+
     function tryPlace(w,h,areaX,areaW){
         for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){
             const x=randBetween(areaX,areaX+areaW-w), y=randBetween(0,H-h);
-            const c={x,y,w,h}; let ok=true;
-            for(const o of objects) if(rectOverlap(c,o)) {ok=false; break;}
+            const c={x,y,w,h};
+            let ok=true;
+            for(const o of objects){
+                if(rectOverlap(c,o)){ ok=false; break; }
+            }
             if(ok) return c;
         }
         return {x:randBetween(areaX,areaX+areaW-w),y:randBetween(0,H-h),w,h};
     }
+
     for(let i=0;i<CONFIG.demoSmallStars;i++){
-        const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2,pos=tryPlace(w,h,W/2-20*scaleFactor,W/2+40*scaleFactor);
-        const obj={id:`S${i+1}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:true,cancelled:false};
-        objects.push(obj); smallStars.push(obj);
+        const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2;
+        const pos=tryPlace(w,h,W/2-20*scaleFactor,40*scaleFactor);
+        const o={id:`S${i+1}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:true,cancelled:false};
+        objects.push(o); smallStars.push(o);
     }
+
     const remaining=CONFIG.smallStarsCount - CONFIG.demoSmallStars;
     for(let i=0;i<remaining;i++){
         const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2;
-        const areaX = i<remaining/2 ? 0 : W/2, areaW = W/2;
-        const pos=tryPlace(w,h,areaX,areaW);
-        const obj={id:`S${i+1+CONFIG.demoSmallStars}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:false,cancelled:false};
-        objects.push(obj); smallStars.push(obj);
+        const areaX = i < remaining/2 ? 0 : W/2;
+        const pos = tryPlace(w,h,areaX,W/2);
+        const o={id:`S${i+1+CONFIG.demoSmallStars}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:false,cancelled:false};
+        objects.push(o); smallStars.push(o);
     }
 
-    const placeGeneric=(count,propsGen)=>{for(let i=0;i<count;i++){let obj=null; for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){ const pos=propsGen(); obj={...pos}; let ok=true; for(const o of objects) if(rectOverlap({...pos},o)) {ok=false; break;} if(ok) break;} objects.push(obj);}};
-    
+    const placeGeneric=(count,propsGen)=>{
+        for(let i=0;i<count;i++){
+            let o=null;
+            for(let k=0;k<CONFIG.MAX_PLACEMENT_ATTEMPTS;k++){
+                const pos=propsGen();
+                o={...pos};
+                let ok=true;
+                for(const z of objects){
+                    if(rectOverlap(o,z)) { ok=false; break; }
+                }
+                if(ok) break;
+            }
+            objects.push(o);
+        }
+    };
+
     placeGeneric(CONFIG.largeStarsCount,()=>({
         id:`L${Math.random()}`,
         type:'large',
@@ -282,65 +323,113 @@ function placeObjects(){
 
     const letters='ABCÇDEFGĞHIİJKLMNOÖPQRSŞTÜVYZ'.split('');
     placeGeneric(CONFIG.lettersCount,()=>{
-        const font = CONFIG.wordFont*scaleFactor;
+        const font=CONFIG.wordFont*scaleFactor;
         const ch = letters[Math.floor(randBetween(0,letters.length))];
-        return {id:`T${Math.random()}`,type:'letter',text:ch,font,w:font*0.9,h:font*1.2,x:randBetween(0,W-font),y:randBetween(0,H-font)};
+        return {
+            id:`T${Math.random()}`,
+            type:'letter',
+            text:ch,font,
+            w:font*0.9,h:font*1.2,
+            x:randBetween(0,W-font),
+            y:randBetween(0,H-font)
+        };
     });
 
     placeGeneric(CONFIG.wordsCount,()=>{
-        const font = CONFIG.wordFont*scaleFactor;
-        const t = LANG[currentLang].wordsList[Math.floor(randBetween(0, LANG[currentLang].wordsList.length))];
-        const w = Math.max(20,t.length*font*0.6), h = font*1.2;
-        return {id:`W${Math.random()}`,type:'word',text:t,font,w,h,x:randBetween(0,W-w),y:randBetween(0,H-h)};
+        const font=CONFIG.wordFont*scaleFactor;
+        const t = LANG[currentLang].wordsList[Math.floor(randBetween(0,LANG[currentLang].wordsList.length))];
+        const w = Math.max(20,t.length*font*0.6), h=font*1.2;
+        return {
+            id:`W${Math.random()}`,
+            type:'word',text:t,font,w,h,
+            x:randBetween(0,W-w),
+            y:randBetween(0,H-h)
+        };
     });
 }
 
-/* DRAW */
-function drawStar(cx,cy,r,color='#000'){const spikes=5,outer=r,inner=r*0.45;ctx.beginPath();let rot=Math.PI/2*3;ctx.moveTo(cx,cy-outer);for(let i=0;i<spikes;i++){ctx.lineTo(cx+Math.cos(rot)*outer,cy+Math.sin(rot)*outer);rot+=Math.PI/spikes;ctx.lineTo(cx+Math.cos(rot)*inner,cy+Math.sin(rot)*inner);rot+=Math.PI/spikes;}ctx.closePath();ctx.fillStyle=color;ctx.fill();ctx.strokeStyle=color;ctx.stroke();}
+/* DRAW STAR */
+function drawStar(cx,cy,r,color='#000'){
+    const spikes=5,outer=r,inner=r*0.45;
+    let rot=Math.PI/2*3;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy-outer);
+    for(let i=0;i<spikes;i++){
+        ctx.lineTo(cx+Math.cos(rot)*outer,cy+Math.sin(rot)*outer); rot+=Math.PI/spikes;
+        ctx.lineTo(cx+Math.cos(rot)*inner,cy+Math.sin(rot)*inner); rot+=Math.PI/spikes;
+    }
+    ctx.closePath();
+    ctx.fillStyle=color;
+    ctx.fill();
+}
 
+/* RENDER EVERYTHING */
 function render(){
     ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR);
+
     for(const o of objects){
-        const cx=o.x+o.w/2,cy=o.y+o.h/2;
+        const cx=o.x+o.w/2, cy=o.y+o.h/2;
 
         if(o.type==='small'){
-            let color = o.demo ? '#888' : '#000';
-            if(testFinished && !o.cancelled && !o.demo) color = '#d9534f';
+            let color=o.demo?'#888':'#000';
+
+            if(testFinished){
+                if(o.cancelled){
+                    color='#000'; 
+                } else if(!o.demo){
+                    color='#d9534f';
+                }
+            }
+
             drawStar(cx,cy,o.r,color);
 
             if(o.demo){
                 ctx.strokeStyle='#d9534f';
                 ctx.lineWidth=2;
                 ctx.beginPath();
-                ctx.moveTo(o.x,o.y);
-                ctx.lineTo(o.x+o.w,o.y+o.h);
-                ctx.moveTo(o.x,o.y+o.h);
-                ctx.lineTo(o.x+o.w,o.y);
+                ctx.moveTo(o.x,o.y); ctx.lineTo(o.x+o.w,o.y+o.h);
+                ctx.moveTo(o.x,o.y+o.h); ctx.lineTo(o.x+o.w,o.y);
                 ctx.stroke();
             }
 
-            // show star id when test finished (or always if you want)
-            if(testFinished){
-                ctx.fillStyle = '#000';
-                ctx.font = `${12*scaleFactor}px Arial`;
-                ctx.fillText(o.id, o.x, Math.max(12, o.y - 6));
+            if(testFinished && o.cancelled){
+                ctx.fillStyle='#0066cc';
+                ctx.font=`${22*scaleFactor}px Arial`;
+                ctx.fillText(o.id, o.x, Math.max(22, o.y-6));
             }
         }
-        else if(o.type==='large'){drawStar(cx,cy,o.r,'#000');}
-        else if(o.type==='letter'){ctx.fillStyle='#000';ctx.font=`${o.font}px Arial`;ctx.fillText(o.text,o.x,o.y+o.h*0.85);}
-        else if(o.type==='word'){ctx.fillStyle='#000';ctx.font=`${o.font}px Arial`;ctx.fillText(o.text,o.x,o.y+o.h*0.85);}
+
+        else if(o.type==='large'){ drawStar(cx,cy,o.r,'#000'); }
+
+        else if(o.type==='letter'){
+            ctx.fillStyle='#000';
+            ctx.font=`${o.font}px Arial`;
+            ctx.fillText(o.text,o.x,o.y+o.h*0.85);
+        }
+
+        else if(o.type==='word'){
+            ctx.fillStyle='#000';
+            ctx.font=`${o.font}px Arial`;
+            ctx.fillText(o.text,o.x,o.y+o.h*0.85);
+        }
     }
 
-    for(const s of strokes){
+    strokes.forEach((s,idx)=>{
         ctx.strokeStyle = testFinished
-            ? (s.starIds.length > 0 ? '#2eb82e' : '#d9534f')
+            ? (s.starIds.length>0 ? '#2eb82e' : '#d9534f')
             : '#007acc';
         ctx.lineWidth=3;
         ctx.beginPath();
         ctx.moveTo(s.x1,s.y1);
         ctx.lineTo(s.x2,s.y2);
         ctx.stroke();
-    }
+
+        if(testFinished){
+            ctx.fillStyle='#ff8800';          /* YELLOW NUMBERS */
+            ctx.font=`${16*scaleFactor}px Arial`; /* 16px FONT */
+            ctx.fillText(idx+1, s.x1+4, s.y1-4);
+        }
+    });
 
     if(tempStroke){
         ctx.strokeStyle='#007acc';
@@ -352,172 +441,217 @@ function render(){
     }
 }
 
-/* helper: compute direction code & localized string */
+/* DIRECTION DETECTOR */
 function computeDirection(x1,y1,x2,y2){
-    const dx = x2 - x1, dy = y2 - y1;
-    const absDx = Math.abs(dx), absDy = Math.abs(dy);
-    let code = 'ttb';
-    if(absDx > absDy){
-        code = dx > 0 ? 'ltr' : 'rtl';
-    } else {
-        code = dy > 0 ? 'ttb' : 'btt';
-    }
-    const s = LANG[currentLang].dirStrings;
-    return {code, text: s[code]};
+    const dx=x2-x1, dy=y2-y1;
+    let code = Math.abs(dx)>Math.abs(dy)
+        ? (dx>0?'ltr':'rtl')
+        : (dy>0?'ttb':'btt');
+    return {code, text:LANG[currentLang].dirStrings[code]};
 }
 
-/* POINTER HANDLERS */
-function pointerDown(e){if(!drawEnabled||testFinished)return;e.preventDefault();startPoint=getCanvasPoint(e);isDrawing=true;tempStroke={x1:startPoint.x,y1:startPoint.y,x2:startPoint.x,y2:startPoint.y};render();}
-function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing)return;e.preventDefault();const p=getCanvasPoint(e);tempStroke.x2=p.x;tempStroke.y2=p.y;render();}
+/* POINTER EVENTS */
+function pointerDown(e){
+    if(!drawEnabled||testFinished) return;
+    e.preventDefault();
+    startPoint=getCanvasPoint(e);
+    isDrawing=true;
+    tempStroke={x1:startPoint.x,y1:startPoint.y,x2:startPoint.x,y2:startPoint.y};
+    render();
+}
+function pointerMove(e){
+    if(!drawEnabled||testFinished||!isDrawing)return;
+    e.preventDefault();
+    const p=getCanvasPoint(e);
+    tempStroke.x2=p.x; tempStroke.y2=p.y;
+    render();
+}
 function pointerUp(e){
-    if(!drawEnabled||testFinished||!isDrawing)return;e.preventDefault();
-    const end=getCanvasPoint(e);isDrawing=false;
-    const len=segLen(startPoint.x,startPoint.y,end.x,end.y);
-    if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){tempStroke=null;render();return;}
+    if(!drawEnabled||testFinished||!isDrawing)return;
+    e.preventDefault();
+    const end=getCanvasPoint(e);
+    isDrawing=false;
 
-    // find small stars intersected (excluding demo)
+    const len=segLen(startPoint.x,startPoint.y,end.x,end.y);
+    if(len<CONFIG.MIN_STROKE_LEN*scaleFactor || len>CONFIG.MAX_STROKE_LEN*scaleFactor){
+        tempStroke=null; render(); return;
+    }
+
     let hits=[];
     for(const s of smallStars){
         if(s.demo) continue;
         if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);
     }
 
-    // if multiple hits, order them along the stroke start->end
-    if(hits.length > 1){
-        const sx = startPoint.x, sy = startPoint.y, ex = end.x, ey = end.y;
+    if(hits.length>1){
+        const sx=startPoint.x, sy=startPoint.y, ex=end.x, ey=end.y;
         hits.sort((a,b)=>{
-            // compute projection t of center onto segment
-            const ax = a.x + a.w/2, ay = a.y + a.h/2;
-            const bx = b.x + b.w/2, by = b.y + b.h/2;
-            const tA = ((ax-sx)*(ex-sx) + (ay-sy)*(ey-sy)) / ((ex-sx)**2 + (ey-sy)**2 || 1);
-            const tB = ((bx-sx)*(ex-sx) + (by-sy)*(ey-sy)) / ((ex-sx)**2 + (ey-sy)**2 || 1);
+            const ax=a.x+a.w/2, ay=a.y+a.h/2;
+            const bx=b.x+b.w/2, by=b.y+b.h/2;
+            const tA=((ax-sx)*(ex-sx)+(ay-sy)*(ey-sy))/(((ex-sx)**2+(ey-sy)**2)||1);
+            const tB=((bx-sx)*(ex-sx)+(by-sy)*(ey-sy))/(((ex-sx)**2+(ey-sy)**2)||1);
             return tA - tB;
         });
     }
 
-    // mark cancellations and record order
-    const hitIds = [];
+    let hitIds=[];
     for(const s of hits){
         if(!s.cancelled){
-            s.cancelled = true;
-            // record order only first time star cancelled
+            s.cancelled=true;
             starCancelOrder.push(s.id);
         }
         hitIds.push(s.id);
     }
 
-    const dir = computeDirection(startPoint.x,startPoint.y,end.x,end.y);
+    const dir=computeDirection(startPoint.x,startPoint.y,end.x,end.y);
 
     strokes.push({
-        x1:startPoint.x,
-        y1:startPoint.y,
-        x2:end.x,
-        y2:end.y,
-        starIds: hitIds,
-        starCorrect: hitIds.length > 0,
-        directionCode: dir.code,
-        directionText: dir.text,
-        timestamp: Date.now()
+        x1:startPoint.x, y1:startPoint.y,
+        x2:end.x, y2:end.y,
+        starIds:hitIds,
+        starCorrect:hitIds.length>0,
+        directionCode:dir.code,
+        directionText:dir.text,
+        timestamp:Date.now()
     });
 
     tempStroke=null;
     render();
 }
 
-/* TEST CONTROL, RESET, STATS, CSV/PNG download */
-function enableDrawing(){drawEnabled=true;}
-function disableDrawing(){drawEnabled=false;}
+/* TIMER + TEST CONTROL */
 function startTest(){
-    testStarted=true;testFinished=false;drawEnabled=false;strokes=[];startTime=Date.now();starCancelOrder=[];placeObjects();setCanvasSize();render();
-    enableDrawing();
+    testStarted=true; testFinished=false;
+    strokes=[]; starCancelOrder=[];
+    startTime=Date.now();
+    drawEnabled=true;
+
+    placeObjects();
+    setCanvasSize();
+    render();
+
     document.getElementById('finishBtn').disabled=false;
     document.getElementById('startBtn').disabled=true;
-    const minutes=parseFloat(document.getElementById('timeoutMinutes').value);
-    let remainingSeconds=minutes*60;
-    document.getElementById('timer').textContent=`Time Left: ${formatTime(remainingSeconds)}`;
+
+    let sec=parseInt(document.getElementById('timeoutMinutes').value)*60;
+    document.getElementById('timer').textContent='Time Left: '+formatTime(sec);
     clearInterval(countdownInterval);
+
     countdownInterval=setInterval(()=>{
-        remainingSeconds--;
-        document.getElementById('timer').textContent=`Time Left: ${formatTime(remainingSeconds)}`;
-        if(remainingSeconds<=0){clearInterval(countdownInterval);finishTest();alert(LANG[currentLang].alertTime);}
+        sec--;
+        document.getElementById('timer').textContent='Time Left: '+formatTime(sec);
+        if(sec<=0){
+            clearInterval(countdownInterval);
+            finishTest();
+            alert(LANG[currentLang].alertTime);
+        }
     },1000);
 }
+
 function finishTest(){
-    if(!testStarted||testFinished)return;
+    if(!testStarted||testFinished) return;
     testFinished=true;
-    disableDrawing();
+    drawEnabled=false;
+    clearInterval(countdownInterval);
+    document.getElementById('timer').textContent='Time Left: 00:00';
     render();
     computeStats();
+
     document.getElementById('statsPanel').style.display='block';
     document.getElementById('userForm').style.display='flex';
+
     document.getElementById('finishBtn').disabled=true;
     document.getElementById('startBtn').disabled=false;
+
     fileCode=Math.floor(Math.random()*1e8).toString().padStart(8,'0');
-    clearInterval(countdownInterval);
-    document.getElementById('timer').textContent=`Time Left: 00:00`;
 }
+
 function resetTest(){
     clearInterval(countdownInterval);
-    testStarted=false;testFinished=false;drawEnabled=false;strokes=[];objects=[];smallStars=[];stats={};fileCode="";starCancelOrder=[];
+    testStarted=false; testFinished=false;
+    strokes=[]; objects=[]; smallStars=[];
+    starCancelOrder=[];
+    drawEnabled=false;
     document.getElementById('statsPanel').style.display='none';
     document.getElementById('userForm').style.display='none';
     document.getElementById('startBtn').disabled=false;
     document.getElementById('finishBtn').disabled=true;
-    document.getElementById('timer').textContent=`Time Left: --:--`;
-    setCanvasSize(); render();
+    document.getElementById('timer').textContent='Time Left: --:--';
+    setCanvasSize();
+    render();
 }
 
-/* STATS & CSV/PNG */
+/* STATS */
 function computeStats(){
-    const scored=smallStars.filter(s=>!s.demo),cancelled=scored.filter(s=>s.cancelled).length;
-    const leftCancelled=scored.filter(s=>s.cancelled&&(s.x+s.w/2)<(canvas.width/DPR)/2).length;
-    const rightCancelled=cancelled-leftCancelled;
+    const scored = smallStars.filter(s=>!s.demo);
+    const cancelled = scored.filter(s=>s.cancelled).length;
+    const leftCancelled = scored.filter(s=>s.cancelled && (s.x+s.w/2) < (canvas.width/DPR)/2).length;
+    const rightCancelled = cancelled - leftCancelled;
+
     const lateralityIndex = cancelled>0 ? leftCancelled/cancelled : 0;
     let USN='None';
     if(lateralityIndex<=0.46) USN='Left';
     else if(lateralityIndex>=0.54) USN='Right';
-    stats={totalSmall:smallStars.length,demoCount:smallStars.filter(s=>s.demo).length,scoredTotal:CONFIG.smallStarsCount-cancelled,cancelled,cancelledLeft:leftCancelled,cancelledRight:rightCancelled,lateralityIndex,USN,durationSeconds:Math.round((Date.now()-startTime)/1000)};
 
-    const r = LANG[currentLang].results;
-    // build final stats html
-    let html = `<strong>${r.title}</strong><br>`+
-      `${r.cancelled}: ${cancelled}/${scored.length}<br>`+
-      `${r.left}: ${leftCancelled} | ${r.right}: ${rightCancelled}<br>`+
-      `${r.laterality}: ${lateralityIndex.toFixed(2)}<br>`+
-      `${r.USN}: ${USN}<br>`+
-      `${r.duration}: ${stats.durationSeconds}s`;
+    const duration = Math.round((Date.now()-startTime)/1000);
+    const avgTime = cancelled>0 ? (duration/cancelled).toFixed(2) : '—';
 
-    // show star cancel order
-    html += `<div class="starOrder"><strong>${r.orderTitle}:</strong> `;
-    if(starCancelOrder.length===0) html += '—';
-    else html += starCancelOrder.join(' → ');
-    html += `</div>`;
+    stats={
+        totalSmall:smallStars.length,
+        demoCount:smallStars.filter(s=>s.demo).length,
+        maxScore:scored.length,
+        cancelled,
+        cancelledLeft:leftCancelled,
+        cancelledRight:rightCancelled,
+        lateralityIndex,
+        USN,
+        durationSeconds:duration,
+        avgTime
+    };
 
-    // strokes table
-    const headers = r.strokeTableHeaders;
-    html += `<div style="overflow:auto"><table><thead><tr>`;
-    for(const h of headers) html += `<th>${h}</th>`;
-    html += `</tr></thead><tbody>`;
-    strokes.forEach((s,idx)=>{
-      const starNames = s.starIds.length ? s.starIds.join('|') : '';
-      const dirText = s.directionText || computeDirection(s.x1,s.y1,s.x2,s.y2).text;
-      const correct = s.starCorrect ? 'True' : 'False';
-      html += `<tr><td>${idx+1}</td><td>${starNames}</td><td>${Math.round(s.x1)}</td><td>${Math.round(s.y1)}</td><td>${Math.round(s.x2)}</td><td>${Math.round(s.y2)}</td><td>${dirText}</td><td>${correct}</td></tr>`;
+    const r=LANG[currentLang].results;
+
+    let html=`<strong>${r.title}</strong><br>
+        ${r.cancelled}: ${cancelled}/${scored.length}<br>
+        ${r.left}: ${leftCancelled} | ${r.right}: ${rightCancelled}<br>
+        ${r.laterality}: ${lateralityIndex.toFixed(2)}<br>
+        ${r.USN}: ${USN}<br>
+        ${r.duration}: ${duration}s<br>
+        ${r.avgtime}: ${avgTime}s<br>`;
+
+    html+=`<div class="starOrder"><strong>${r.orderTitle}:</strong> `;
+    html+=starCancelOrder.length ? starCancelOrder.join(' → ') : '—';
+    html+=`</div>`;
+
+    const headers=r.strokeTableHeaders;
+    html+=`<div style="overflow:auto"><table><thead><tr>`;
+    headers.forEach(h=>html+=`<th>${h}</th>`);
+    html+=`</tr></thead><tbody>`;
+
+    strokes.forEach((s,i)=>{
+        html+=`<tr>
+        <td>${i+1}</td>
+        <td>${s.starIds.join('|')}</td>
+        <td>${Math.round(s.x1)}</td>
+        <td>${Math.round(s.y1)}</td>
+        <td>${Math.round(s.x2)}</td>
+        <td>${Math.round(s.y2)}</td>
+        <td>${s.directionText}</td>
+        <td>${s.starCorrect?'True':'False'}</td>
+        </tr>`;
     });
-    html += `</tbody></table></div>`;
 
-    document.getElementById('finalStats').innerHTML = html;
+    html+=`</tbody></table></div>`;
+
+    document.getElementById('finalStats').innerHTML=html;
 }
 
-/* CSV helpers: escape values with quotes if needed */
-function csvSafe(val){
-  if(val === null || val === undefined) return '';
-  const s = String(val);
-  // If contains comma or quote or newline, wrap in quotes and escape quotes
-  if(/[,"\n\r]/.test(s)){
-    return `"${s.replace(/"/g,'""')}"`;
-  }
-  return s;
+/* CSV EXPORT */
+function csvSafe(v){
+    if(v===undefined||v===null) return '';
+    const s=String(v);
+    if(/[,"\n\r]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+    return s;
 }
 
 function downloadCSV(){
@@ -525,78 +659,89 @@ function downloadCSV(){
     const surname=document.getElementById('surname').value.trim();
     const age=document.getElementById('age').value.trim();
     if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
-    const c = LANG[currentLang].csv;
+
+    const c=LANG[currentLang].csv;
     let rows=[];
-    // basic info
+
     rows.push([c.name,name]);
     rows.push([c.surname,surname]);
     rows.push([c.age,age]);
-    rows.push([]); // blank
+    rows.push([]);
     rows.push([c.totalSmall,stats.totalSmall]);
     rows.push([c.demoCount,stats.demoCount]);
-    rows.push([c.maxScore,stats.scoredTotal]);
+    rows.push([c.maxScore,stats.maxScore]);
     rows.push([c.cancelled,stats.cancelled]);
     rows.push([c.left,stats.cancelledLeft]);
     rows.push([c.right,stats.cancelledRight]);
     rows.push([c.laterality,stats.lateralityIndex]);
     rows.push([c.USN,stats.USN]);
     rows.push([c.duration,stats.durationSeconds]);
-    rows.push([]); // blank
+    rows.push([c.avg,stats.avgTime]);
+    rows.push([]);
     rows.push([c.strokes]);
-
-    // stroke header row (localized)
     rows.push(c.strokeCols);
 
-    // per-stroke rows
-    strokes.forEach((s,idx)=>{
-      const starNames = s.starIds.length ? s.starIds.join('|') : '';
-      const dirText = s.directionText || computeDirection(s.x1,s.y1,s.x2,s.y2).text;
-      const correct = s.starCorrect ? 'True' : 'False';
-      rows.push([idx+1, starNames, Math.round(s.x1), Math.round(s.y1), Math.round(s.x2), Math.round(s.y2), dirText, correct]);
+    strokes.forEach((s,i)=>{
+        rows.push([
+            i+1,
+            s.starIds.join('|'),
+            Math.round(s.x1),
+            Math.round(s.y1),
+            Math.round(s.x2),
+            Math.round(s.y2),
+            s.directionText,
+            s.starCorrect?'True':'False'
+        ]);
     });
 
-    // add cancellation order as a separate small section
     rows.push([]);
-    const orderHeader = LANG[currentLang].results.orderTitle || 'Order';
+    const orderHeader=LANG[currentLang].results.orderTitle;
     rows.push([orderHeader, starCancelOrder.join(' → ')]);
 
-    // Build CSV, include BOM for Excel & Turkish chars
-    const csvContent = '\uFEFF' + rows.map(r=>r.map(csvSafe).join(',')).join('\r\n');
-    const blob=new Blob([csvContent],{type:'text/csv;charset=utf-8;'});
+    const csv='\uFEFF' + rows.map(r=>r.map(csvSafe).join(',')).join('\r\n');
+
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
     a.download=`${fileCode}_${name}_${surname}_${age}.csv`;
     a.click();
 }
 
-/* PNG export unchanged */
+/* PNG EXPORT */
 function downloadPNG(){
     const name=document.getElementById('name').value.trim();
     const surname=document.getElementById('surname').value.trim();
     const age=document.getElementById('age').value.trim();
     if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
-    canvas.toBlob(function(blob){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${fileCode}_${name}_${surname}_${age}.png`;a.click();URL.revokeObjectURL(url);});
+
+    canvas.toBlob(b=>{
+        const url=URL.createObjectURL(b);
+        const a=document.createElement('a');
+        a.href=url;
+        a.download=`${fileCode}_${name}_${surname}_${age}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
 }
 
-/* EVENTS */
+/* EVENT BINDINGS */
 document.getElementById('startBtn').addEventListener('click',startTest);
 document.getElementById('finishBtn').addEventListener('click',finishTest);
 document.getElementById('resetBtn').addEventListener('click',resetTest);
 document.getElementById('downloadCsv').addEventListener('click',downloadCSV);
 document.getElementById('downloadPng').addEventListener('click',downloadPNG);
-canvas.addEventListener('pointerdown', pointerDown);
-canvas.addEventListener('pointermove', pointerMove);
-canvas.addEventListener('pointerup', pointerUp);
-canvas.addEventListener('pointercancel', pointerUp);
-canvas.addEventListener('pointerleave', () => { if(isDrawing){ isDrawing=false; tempStroke=null; render(); } });
 
-document.querySelectorAll('#languageButtons button').forEach(btn=>{
-  btn.addEventListener('click',()=>applyLang(btn.dataset.lang));
-});
+canvas.addEventListener('pointerdown',pointerDown);
+canvas.addEventListener('pointermove',pointerMove);
+canvas.addEventListener('pointerup',pointerUp);
+canvas.addEventListener('pointercancel',pointerUp);
+canvas.addEventListener('pointerleave',()=>{if(isDrawing){isDrawing=false;tempStroke=null;render();}});
 
-/* INIT */
+document.querySelectorAll('#languageButtons button')
+    .forEach(b=>b.addEventListener('click',()=>applyLang(b.dataset.lang)));
+
 setCanvasSize(); render();
-window.addEventListener('resize',()=>{setCanvasSize(); render();});
+window.addEventListener('resize',()=>{setCanvasSize();render();});
 applyLang('en');
 </script>
 </body>
