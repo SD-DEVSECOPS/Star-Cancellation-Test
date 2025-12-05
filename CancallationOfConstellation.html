@@ -97,8 +97,11 @@ function segIntersects(obj,x1,y1,x2,y2){
     return false;
 }
 function getCanvasPoint(e){
-    const rect=canvas.getBoundingClientRect();
-    return {x: e.clientX - rect.left, y: e.clientY - rect.top};
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+    };
 }
 function formatTime(sec){const m=Math.floor(sec/60).toString().padStart(2,'0'); const s=(sec%60).toString().padStart(2,'0'); return `${m}:${s}`;}
 
@@ -173,10 +176,57 @@ function render(){
     if(tempStroke){ctx.strokeStyle='#007acc'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(tempStroke.x1,tempStroke.y1); ctx.lineTo(tempStroke.x2,tempStroke.y2); ctx.stroke();}
 }
 
-/* POINTER (Works on mobile and desktop) */
-function pointerDown(e){if(!drawEnabled||testFinished) return;e.preventDefault();startPoint=getCanvasPoint(e);isDrawing=true;tempStroke={x1:startPoint.x,y1:startPoint.y,x2:startPoint.x,y2:startPoint.y}; render();}
-function pointerMove(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();const p=getCanvasPoint(e);tempStroke.x2=p.x;tempStroke.y2=p.y;render();}
-function pointerUp(e){if(!drawEnabled||testFinished||!isDrawing) return;e.preventDefault();const end=getCanvasPoint(e);isDrawing=false;tempStroke=null; const len=segLen(startPoint.x,startPoint.y,end.x,end.y);if(len<CONFIG.MIN_STROKE_LEN*scaleFactor||len>CONFIG.MAX_STROKE_LEN*scaleFactor){render();return;} const hits=[]; for(const s of smallStars){if(s.cancelled||s.demo) continue;if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);} let chosen=null; if(hits.length>0){const midx=(startPoint.x+end.x)/2,midy=(startPoint.y+end.y)/2; hits.sort((a,b)=>((a.x+a.w/2-midx)**2+(a.y+a.h/2-midy)**2)-((b.x+b.w/2-midx)**2+(b.y+b.h/2-midy)**2)); chosen=hits[0]; chosen.cancelled=true;} strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen}); render();}
+/* POINTER HANDLERS (Fixed for mobile) */
+function pointerDown(e){
+    if(!drawEnabled||testFinished) return;
+    e.preventDefault();
+    startPoint = getCanvasPoint(e);
+    isDrawing = true;
+    tempStroke = { x1:startPoint.x, y1:startPoint.y, x2:startPoint.x, y2:startPoint.y };
+    render();
+}
+
+function pointerMove(e){
+    if(!drawEnabled||testFinished||!isDrawing) return;
+    e.preventDefault();
+    const p = getCanvasPoint(e);
+    tempStroke.x2 = p.x;
+    tempStroke.y2 = p.y;
+    render();
+}
+
+function pointerUp(e){
+    if(!drawEnabled||testFinished||!isDrawing) return;
+    e.preventDefault();
+    const end = getCanvasPoint(e);
+    isDrawing = false;
+
+    const len = segLen(startPoint.x,startPoint.y,end.x,end.y);
+    if(len < CONFIG.MIN_STROKE_LEN*scaleFactor || len > CONFIG.MAX_STROKE_LEN*scaleFactor){
+        tempStroke = null;
+        render();
+        return;
+    }
+
+    const hits = [];
+    for(const s of smallStars){
+        if(s.cancelled || s.demo) continue;
+        if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);
+    }
+
+    let chosen = null;
+    if(hits.length>0){
+        const midx = (startPoint.x + end.x)/2;
+        const midy = (startPoint.y + end.y)/2;
+        hits.sort((a,b)=>((a.x+a.w/2-midx)**2 + (a.y+a.h/2-midy)**2) - ((b.x+b.w/2-midx)**2 + (b.y+b.h/2-midy)**2));
+        chosen = hits[0];
+        chosen.cancelled = true;
+    }
+
+    strokes.push({x1:startPoint.x,y1:startPoint.y,x2:end.x,y2:end.y,starId:chosen?chosen.id:null,starCorrect:!!chosen});
+    tempStroke = null;
+    render();
+}
 
 /* TEST CONTROL, RESET, STATS, CSV/PNG download */
 function enableDrawing(){drawEnabled=true;}
