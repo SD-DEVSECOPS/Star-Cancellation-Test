@@ -72,7 +72,7 @@ let tempStroke=null;
 let isDrawing=false, startPoint=null;
 
 /* HITBOX SIZE BOOST */
-const HITBOX_PAD = 6;     // base extra hitbox size
+const HITBOX_PAD = 12;     // base extra hitbox size adjust if u want bigger near miss detection.
 function getHitbox(obj){
     const pad = HITBOX_PAD * scaleFactor;
     return {
@@ -461,3 +461,4 @@ window.addEventListener('resize',()=>{setCanvasSize(); render();});
 </script>
 </body>
 </html>
+
