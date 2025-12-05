@@ -116,13 +116,6 @@ https://sd-devsecops.github.io/Star-Cancellation-Test/CancallationOfConstellatio
 
 ---
 
-## 📁 Repository Structure
-📦 Star-Cancellation-Test
- ├── CancallationOfConstellation.html   # Full UI + test logic
- └── README.md                          # Documentation
-
----
-
 ## ⚖ License
 
 This project is **open-source** and free for **educational and research use**.
