@@ -52,7 +52,6 @@ The SCT runs fully inside any modern browser:
 - ✔ Touch-friendly stroke handling  
 - ✔ Fully responsive layout  
 - ✔ No installation required  
-- ✔ Offline-capable  
 - ✔ Uses **no external libraries**
 
 ---
