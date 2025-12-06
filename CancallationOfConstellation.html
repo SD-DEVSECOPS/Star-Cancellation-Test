@@ -321,7 +321,7 @@ function placeObjects(){
         y:randBetween(0,H-40*scaleFactor)
     }));
 
-    const letters='ABCDEFGHIJKLMNOPQRSTVYZ'.split('');
+    const letters='ABCÇDEFGĞHIİJKLMNOÖPQRSŞTÜVYZ'.split('');
     placeGeneric(CONFIG.lettersCount,()=>{
         const font=CONFIG.wordFont*scaleFactor;
         const ch = letters[Math.floor(randBetween(0,letters.length))];
@@ -714,7 +714,21 @@ function downloadPNG(){
     const age=document.getElementById('age').value.trim();
     if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
 
-    canvas.toBlob(b=>{
+    // --- FIX: Create a white-background canvas for export ---
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+
+    const ex = exportCanvas.getContext("2d");
+
+    // white background (required for MOBILE PNG correct color)
+    ex.fillStyle = "#ffffff";
+    ex.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    // draw current canvas on top
+    ex.drawImage(canvas, 0, 0);
+
+    exportCanvas.toBlob(b=>{
         const url=URL.createObjectURL(b);
         const a=document.createElement('a');
         a.href=url;
@@ -746,4 +760,3 @@ applyLang('en');
 </script>
 </body>
 </html>
-
