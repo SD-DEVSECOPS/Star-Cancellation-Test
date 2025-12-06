@@ -59,7 +59,7 @@ The SCT runs fully inside any modern browser:
 ## 🧪 How to Use
 
 **Live Test Page:**  
-https://sd-devsecops.github.io/Star-Cancellation-Test/CancallationOfConstellation.html
+https://sd-devsecops.github.io/Star-Cancellation-Test/CancellationOfConstellation.html
 
 1. Adjust object counts (optional).  
 2. Select test duration (minutes).  
