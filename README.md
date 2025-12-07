@@ -1,35 +1,41 @@
 # ⭐ Star Cancellation Test (SCT)
 
 This repository contains the **Star Cancellation Test** — a browser-based assessment tool used to measure visuospatial attention, perceptual accuracy, and motor control.  
-It is commonly used in **neurological and neuropsychological research**, including studies on **spatial neglect** and related visuospatial disorders.
+It is widely used in **neurology**, **neuropsychology**, and **cognitive research**, including studies on **Unilateral Spatial Neglect (USN)**.
 
 ---
 
 ## 📌 Overview
 
-The test displays **small & large stars, letters, and words** generated randomly across an interactive canvas.
+The test displays **small & large stars, letters, and words** randomly across an interactive canvas.
 
 **Participant task:**  
-Draw a stroke over each **small star** they see.
+Draw a stroke across each **small star** they detect.
 
 The system automatically records:
 
 - Correctly cancelled stars  
 - **Cancellation order (first → last)**  
-- **Stroke-by-stroke data**  
+- **Stroke-by-stroke metrics**  
 - **Stroke direction detection**  
   - Left→Right  
   - Right→Left  
   - Top→Bottom  
   - Bottom→Top  
 - Left/right cancellation distribution  
-- **Laterality Index**  
+- **Laterality Index calculation**  
 - **USN classification**  
-- **Full statistical summary**  
-- **CSV export** (UTF-8 BOM for Turkish characters)  
-- **PNG export** of the final canvas state  
+- Full statistical summary  
+- **CSV export** (UTF-8 BOM for multilingual compatibility)  
+- **PNG export** of the final test canvas  
+- **NEW: Pattern PNG export**  
+  - Shows each stroke in **clinical colors**:  
+    - Green = correct (hit ≥ 1 small star)  
+    - Red = incorrect  
+  - Displays midpoint-to-midpoint **arrows** representing the participant’s visual scanning path  
+  - Light context markers for all small stars  
 
-Researchers can configure object counts before starting the test:
+Researchers may configure object counts:
 
 | Object Type | Recommended Range |
 |-------------|------------------|
@@ -38,21 +44,20 @@ Researchers can configure object counts before starting the test:
 | Letters     | 10–30            |
 | Words       | 10–20            |
 
-> ⚠ These values are validated to prevent excessive overlap or overload.
+> ✔ Random placement algorithm prevents overlap and distributes items evenly across the canvas.
 
 ---
 
 ## 🌐 Cross-Platform Compatibility
 
-The SCT runs fully inside any modern browser:
+The SCT runs inside any modern browser and supports:
 
 - ✔ Desktop (mouse input)  
-- ✔ Mobile phones (touch input)  
-- ✔ iPad & tablets  
-- ✔ Touch-friendly stroke handling  
-- ✔ Fully responsive layout  
-- ✔ No installation required  
-- ✔ Uses **no external libraries**
+- ✔ Mobile (touch input)  
+- ✔ iPad / tablets  
+- ✔ Responsive canvas scaling  
+- ✔ Multi-touch–safe pointer handling  
+- ✔ No external libraries required  
 
 ---
 
@@ -61,77 +66,87 @@ The SCT runs fully inside any modern browser:
 **Live Test Page:**  
 https://sd-devsecops.github.io/Star-Cancellation-Test/CancellationOfConstellation.html
 
-1. Adjust object counts (optional).  
-2. Select test duration (minutes).  
+1. (Optional) Adjust the counts of stars, letters, and words.  
+2. Select a test duration.  
 3. Press **Start Test**.  
-4. Participant draws strokes directly on the canvas to cancel stars.  
-5. When the timer ends or **Finish Test** is pressed:
-   - Statistics panel appears  
-   - Cancellation order displayed  
-   - Directional stroke table displayed  
-   - Required participant info:
+4. Participant draws strokes directly on the canvas.  
+5. When time runs out or **Finish Test** is pressed:
+   - Statistics appear  
+   - Cancellation order is shown  
+   - Full stroke direction table is displayed  
+   - Participant enters:
      - Name  
      - Surname  
      - Age  
 
-6. Export results via:
-   - **Download CSV**  
-   - **Download PNG**  
+### Export options:
 
-### CSV includes:
+#### ✅ **Download CSV**
+Includes:
 
-- Participant demographics  
+- Demographic data  
 - Object configuration  
-- Total correct cancellations  
-- Left vs right cancellation counts  
+- Correct cancellation totals  
+- Left vs. right cancellations  
 - Laterality Index  
 - USN classification  
 - Duration (seconds)  
 - Average time per correct cancellation  
-- Every stroke — with direction & correctness  
-- Full cancellation order list  
+- All stroke data (coords, direction, correctness)  
+- Full cancellation sequence  
+
+#### ✅ **Download PNG**
+Exports the final visual state exactly as drawn by the participant.
+
+#### ✅ **NEW: Download Pattern PNG**
+Generates an analytical visualization containing:
+
+- **Green/red stroke coloring**  
+- Midpoint-to-midpoint arrow path (scan sequence)  
+- Stroke numbers  
+- Faint small-star markers for spatial reference  
+
+Ideal for:
+
+- Neuropsychological pattern analysis  
+- Clinical case documentation  
+- Research datasets  
+- Spatial behavior mapping  
 
 ---
 
 ## ✨ Features
 
-- **Multi-language interface:** English, Türkçe, Deutsch  
-- Automatic browser-language detection  
-- Translated words list for each language  
-- Randomized placement of:
-  - Small stars  
-  - Large stars  
-  - Letters  
-  - Words  
-- Demo stars included  
-- **Red highlight** for missed stars at test end  
-- **Blue labels** for cancelled stars  
-- **Numbered strokes** on final canvas (visual order tracking)  
-- Direction detection for each stroke  
-- Large, responsive canvas for tablet use  
-- PNG export  
-- UTF-8 encoded CSV export  
-- Works 100% offline  
-- Zero dependencies  
+- Multilingual UI: English, Türkçe, Deutsch  
+- Randomized, non-overlapping placement  
+- Demo stars for training  
+- Missed stars highlighted  
+- Cancelled stars labeled with IDs  
+- Stroke numbering  
+- Direction analysis  
+- High-resolution PNG exports  
+- UTF-8 CSV (supports Turkish & other languages)  
+- Pattern visualization for scanning-path research (NEW)  
+- Zero dependencies (pure HTML + JavaScript)
 
 ---
 
 ## ⚖ License
 
-This project is **open-source** and free for **educational and research use**.
+Open-source for **educational**, **research**, and **clinical development** use.
 
 ---
 
 ## ⚠ Ethical Disclaimer
 
-For any **clinical or academic** research use, ensure:
+For proper research/clinical use:
 
-- Proper **ethics committee approval**  
-- **Informed consent** from all participants  
-- Independent verification of exported data  
+- Obtain appropriate ethics approvals  
+- Collect informed consent  
+- Validate data accuracy independently  
+- Ensure interpretation by trained professionals  
 
 ---
 
 **Project by:** *Melisa Zengin*  
 **Enhanced by:** *ChatGPT*
-
