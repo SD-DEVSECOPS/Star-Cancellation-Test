@@ -132,12 +132,11 @@ Ideal for:
 ---
 
 ## ⚖ License
-
 This project is open-source for **research**, **educational**, and **clinical development** purposes.
 ## 🙏 Citation 
-
 If you use this tool in **research, clinical evaluation, a study, or a publication**,  
 **cite this project** to support continued development.
+
 Email:sdswat93@gmail.com
 
 This helps track academic use and encourages further improvements.
