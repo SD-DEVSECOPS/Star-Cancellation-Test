@@ -133,20 +133,31 @@ Ideal for:
 
 ## ⚖ License
 
-Open-source for **educational**, **research**, and **clinical development** use.
+This project is open-source for **research**, **educational**, and **clinical development** purposes.
 
 ---
 
 ## ⚠ Ethical Disclaimer
 
-For proper research/clinical use:
+For proper clinical or research use:
 
-- Obtain appropriate ethics approvals  
-- Collect informed consent  
-- Validate data accuracy independently  
+- Obtain relevant **ethical approvals**  
+- Secure **informed consent**  
+- Verify all exported data  
 - Ensure interpretation by trained professionals  
 
 ---
 
-**Project by:** *Melisa Zengin*  
+## 🙏 Citation Request
+
+If you use this tool in **research, clinical evaluation, a study, or a publication**,  
+**please cite this project** to support continued development.
+Email: sdswat93@gmail.com
+
+This helps track academic use and encourages further improvements.
+
+---
+
+**Project by:** *Zengin, M.*  
 **Enhanced by:** *ChatGPT*
+
