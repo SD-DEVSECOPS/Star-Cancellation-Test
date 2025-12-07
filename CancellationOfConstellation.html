@@ -64,6 +64,7 @@ button{background:#0b74de;color:white;border:none;cursor:pointer;}
     <input id="age" placeholder="Age" type="number">
     <button id="downloadCsv">Download CSV</button>
     <button id="downloadPng">Download PNG</button>
+    <button id="downloadPatternPng">Download Pattern PNG</button>
   </div>
   <div class="small" style="margin-top:8px">
     CSV & PNG format: <code>XXXXXXXX_name_surname_age</code>
@@ -434,8 +435,8 @@ function render(){
         ctx.stroke();
 
         if(testFinished){
-            ctx.fillStyle='#ff8800';          /* YELLOW/ORANGE NUMBERS */
-            ctx.font=`${16*scaleFactor}px Arial`; /* 16px FONT */
+            ctx.fillStyle='#ff8800';
+            ctx.font=`${16*scaleFactor}px Arial`;
             ctx.fillText(idx+1, s.x1+4, s.y1-4);
         }
     });
@@ -732,7 +733,6 @@ function downloadPNG(){
     const age=document.getElementById('age').value.trim();
     if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
 
-    // white-background export canvas (fix mobile PNG background)
     const exportCanvas = document.createElement("canvas");
     exportCanvas.width = canvas.width;
     exportCanvas.height = canvas.height;
@@ -752,12 +752,107 @@ function downloadPNG(){
     });
 }
 
+/* PATTERN PNG EXPORT WITH GREEN/RED STROKES + ARROWS */
+function downloadPatternPNG(){
+    const name=document.getElementById('name').value.trim();
+    const surname=document.getElementById('surname').value.trim();
+    const age=document.getElementById('age').value.trim();
+    if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
+
+    const patternCanvas=document.createElement("canvas");
+    patternCanvas.width=canvas.width;
+    patternCanvas.height=canvas.height;
+    const pctx=patternCanvas.getContext("2d");
+
+    // White background
+    pctx.fillStyle="#ffffff";
+    pctx.fillRect(0,0,patternCanvas.width,patternCanvas.height);
+
+    // Faint stars for context
+    pctx.globalAlpha=0.15;
+    smallStars.forEach(s=>{
+        const cx=s.x+s.w/2;
+        const cy=s.y+s.h/2;
+        pctx.beginPath();
+        pctx.arc(cx*DPR,cy*DPR,6*DPR,0,Math.PI*2);
+        pctx.fillStyle="#000000";
+        pctx.fill();
+    });
+    pctx.globalAlpha=1;
+
+    // Draw strokes with green/red logic
+    pctx.lineCap="round";
+    strokes.forEach((s,i)=>{
+        pctx.lineWidth=3*DPR;
+        pctx.strokeStyle = s.starCorrect ? "#2eb82e" : "#d9534f";
+
+        pctx.beginPath();
+        pctx.moveTo(s.x1*DPR,s.y1*DPR);
+        pctx.lineTo(s.x2*DPR,s.y2*DPR);
+        pctx.stroke();
+
+        // Stroke number label (orange like main canvas)
+        pctx.fillStyle="#ff8800";
+        pctx.font=`${18*DPR}px Arial`;
+        pctx.fillText(i+1,s.x1*DPR+6,s.y1*DPR-6);
+    });
+
+    // Compute midpoints
+    const midpoints=strokes.map(s=>{
+        const mx=(s.x1+s.x2)/2*DPR;
+        const my=(s.y1+s.y2)/2*DPR;
+        return {mx,my};
+    });
+
+    // Arrow helper
+    function drawArrow(ctx,x1,y1,x2,y2){
+        const head=12*DPR;
+        const a=Math.atan2(y2-y1,x2-x1);
+
+        ctx.beginPath();
+        ctx.moveTo(x1,y1);
+        ctx.lineTo(x2,y2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x2,y2);
+        ctx.lineTo(x2-head*Math.cos(a-Math.PI/6), y2-head*Math.sin(a-Math.PI/6));
+        ctx.lineTo(x2-head*Math.cos(a+Math.PI/6), y2-head*Math.sin(a+Math.PI/6));
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Arrows between midpoint sequence
+    if(midpoints.length>1){
+        pctx.strokeStyle="#555";
+        pctx.fillStyle="#555";
+        pctx.lineWidth=2*DPR;
+
+        for(let i=0;i<midpoints.length-1;i++){
+            const p1=midpoints[i];
+            const p2=midpoints[i+1];
+            drawArrow(pctx,p1.mx,p1.my,p2.mx,p2.my);
+        }
+    }
+
+    // Save PNG
+    patternCanvas.toBlob(b=>{
+        const url=URL.createObjectURL(b);
+        const a=document.createElement('a');
+        a.href=url;
+        a.download=`${fileCode}_${name}_${surname}_${age}_pattern.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
 /* EVENT BINDINGS */
 document.getElementById('startBtn').addEventListener('click',startTest);
 document.getElementById('finishBtn').addEventListener('click',finishTest);
 document.getElementById('resetBtn').addEventListener('click',resetTest);
 document.getElementById('downloadCsv').addEventListener('click',downloadCSV);
 document.getElementById('downloadPng').addEventListener('click',downloadPNG);
+document.getElementById('downloadPatternPng').addEventListener('click',downloadPatternPNG);
 
 canvas.addEventListener('pointerdown',pointerDown);
 canvas.addEventListener('pointermove',pointerMove);
