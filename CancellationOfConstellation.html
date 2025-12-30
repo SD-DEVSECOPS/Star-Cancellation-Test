@@ -5,75 +5,25 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Star Cancellation Test</title>
 <style>
-/* KEY FIX: lock layout to viewport, no page scroll */
-html,body{height:100%; margin:0;}
-body{
-  font-family:Arial,sans-serif;
-  background:#f4f6f8;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:16px;
-  box-sizing:border-box;
-  height:100svh;          /* stable mobile viewport height */
-  overflow:hidden;        /* prevent scrolling affecting results */
-}
-
-h1{margin:6px 0 8px;font-size:20px; flex:0 0 auto;}
-
-#topRow{width:100%;max-width:1100px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex:0 0 auto;}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;display:flex;flex-direction:column;align-items:center;padding:16px;}
+h1{margin:6px 0 8px;font-size:20px;}
+#topRow{width:100%;max-width:1100px;display:flex;gap:12px;align-items:center;justify-content:space-between;}
 #controls{background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.06);display:flex;gap:8px;align-items:center;}
 #languageButtons{display:flex;gap:4px;}
 input,button,select{font-size:14px;padding:6px;border-radius:4px;border:1px solid #ccc;}
 button{background:#0b74de;color:white;border:none;cursor:pointer;}
+#canvasWrap{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+#canvas{display:block;width:100%;height:72vh;border:1px solid #ddd;touch-action:none;}
 .small{font-size:13px;color:#666;}
-
-.settings{margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:0 0 auto;}
-.settings input{width:60px;}
-
-#timer{width:100%;max-width:1100px;margin-top:4px;font-weight:bold;text-align:right;flex:0 0 auto;}
-
-/* KEY FIX: canvas area flexes to fill remaining height */
-#canvasWrap{
-  width:100%;
-  max-width:1100px;
-  margin-top:12px;
-  background:#fff;
-  padding:0;
-  border-radius:8px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.06);
-  flex:1 1 auto;          /* fill remaining space */
-  min-height:0;           /* important for flex children sizing */
-  display:flex;
-}
-
-#canvas{
-  display:block;
-  width:100%;
-  height:100%;
-  border:1px solid #ddd;
-  touch-action:none;
-}
-
-#statsPanel{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.04);display:none;flex:0 0 auto;}
+#timer{width:100%;max-width:1100px;margin-top:4px;font-weight:bold;text-align:right;}
+#statsPanel{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.04);display:none;}
 #finalStats .starOrder{margin-top:8px;font-size:14px;}
 #finalStats table{width:100%;border-collapse:collapse;margin-top:8px;}
 #finalStats th, #finalStats td{border:1px solid #ddd;padding:6px;text-align:left;font-size:13px;}
-
-/* keep form from pushing page; still can show below if you want */
-#userForm{
-  display:none;
-  margin-top:12px;
-  gap:8px;
-  background:#fff;
-  padding:12px;
-  border-radius:6px;
-  width:100%;
-  max-width:1100px;
-  box-shadow:0 1px 4px rgba(0,0,0,0.04);
-  flex:0 0 auto;
-}
+#userForm{display:none;margin-top:12px;gap:8px;background:#fff;padding:12px;border-radius:6px;width:100%;max-width:1100px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
 #userForm input{width:160px;}
+.settings{margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.settings input{width:60px;}
 </style>
 </head>
 <body>
@@ -279,34 +229,20 @@ function applyLang(lang){
   document.getElementById('startBtn').textContent=t.startBtn;
   document.getElementById('finishBtn').textContent=t.finishBtn;
   document.getElementById('resetBtn').textContent=t.resetBtn;
-
-  // If test is running, you probably don't want to reshuffle objects.
-  // Just re-render labels/words. (Existing words remain as drawn.)
-  render();
 }
 
 /* UTILS */
 function setCanvasSize(){
     const wrap=document.getElementById('canvasWrap');
+    const styleW=wrap.clientWidth, styleH=Math.round(window.innerHeight*0.72);
     DPR=window.devicePixelRatio||1;
-
-    // Measure available space exactly (no vh guessing)
-    const wrapRect = wrap.getBoundingClientRect();
-    const availableH = Math.max(120, Math.floor(window.innerHeight - wrapRect.top - 16)); // 16 = body padding bottom
-
-    const styleW = wrap.clientWidth;
-    const styleH = availableH;
-
     canvas.width=Math.floor(styleW*DPR);
     canvas.height=Math.floor(styleH*DPR);
     canvas.style.width=styleW+'px';
     canvas.style.height=styleH+'px';
-
     ctx.setTransform(DPR,0,0,DPR,0,0);
-
     scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
 }
-
 function randBetween(a,b){return a+(b-a)*rng();}
 function rectOverlap(a,b,pad=CONFIG.minGap*scaleFactor){
     return !(a.x+a.w+pad<=b.x-pad || a.x-pad>=b.x+b.w+pad || a.y+a.h+pad<=b.y-pad || a.y-pad>=b.y+b.h+pad);
@@ -602,8 +538,8 @@ function startTest(){
     startTime=Date.now();
     drawEnabled=true;
 
-    setCanvasSize();
-    placeObjects();
+    setCanvasSize();   // FIX: size + scaleFactor first
+    placeObjects();    // FIX: then place using correct W/H and scaleFactor
     render();
 
     document.getElementById('finishBtn').disabled=false;
@@ -830,9 +766,11 @@ function downloadPatternPNG(){
     patternCanvas.height=canvas.height;
     const pctx=patternCanvas.getContext("2d");
 
+    // White background
     pctx.fillStyle="#ffffff";
     pctx.fillRect(0,0,patternCanvas.width,patternCanvas.height);
 
+    // Faint stars for context
     pctx.globalAlpha=0.15;
     smallStars.forEach(s=>{
         const cx=s.x+s.w/2;
@@ -844,6 +782,7 @@ function downloadPatternPNG(){
     });
     pctx.globalAlpha=1;
 
+    // Draw strokes with green/red logic
     pctx.lineCap="round";
     strokes.forEach((s,i)=>{
         pctx.lineWidth=3*DPR;
@@ -854,17 +793,20 @@ function downloadPatternPNG(){
         pctx.lineTo(s.x2*DPR,s.y2*DPR);
         pctx.stroke();
 
+        // Stroke number label (orange like main canvas)
         pctx.fillStyle="#ff8800";
         pctx.font=`${18*DPR}px Arial`;
         pctx.fillText(i+1,s.x1*DPR+6,s.y1*DPR-6);
     });
 
+    // Compute midpoints
     const midpoints=strokes.map(s=>{
         const mx=(s.x1+s.x2)/2*DPR;
         const my=(s.y1+s.y2)/2*DPR;
         return {mx,my};
     });
 
+    // Arrow helper
     function drawArrow(ctx,x1,y1,x2,y2){
         const head=12*DPR;
         const a=Math.atan2(y2-y1,x2-x1);
@@ -882,10 +824,12 @@ function downloadPatternPNG(){
         ctx.fill();
     }
 
+    // Arrows between midpoint sequence
     if(midpoints.length>1){
         pctx.strokeStyle="#555";
         pctx.fillStyle="#555";
         pctx.lineWidth=2*DPR;
+
         for(let i=0;i<midpoints.length-1;i++){
             const p1=midpoints[i];
             const p2=midpoints[i+1];
@@ -893,6 +837,7 @@ function downloadPatternPNG(){
         }
     }
 
+    // Save PNG
     patternCanvas.toBlob(b=>{
         const url=URL.createObjectURL(b);
         const a=document.createElement('a');
@@ -920,22 +865,8 @@ canvas.addEventListener('pointerleave',()=>{if(isDrawing){isDrawing=false;tempSt
 document.querySelectorAll('#languageButtons button')
     .forEach(b=>b.addEventListener('click',()=>applyLang(b.dataset.lang)));
 
-function onResize(){
-  const wasRunning = testStarted && !testFinished;
-  setCanvasSize();
-
-  // If you resize DURING a running test, the coords/strokes will no longer match.
-  // We keep it simple: just re-render. (Best practice: lock orientation during test.)
-  render();
-
-  // Optional: if you prefer, auto-reset when size changes during an active test:
-  // if(wasRunning){ resetTest(); }
-}
-
-setCanvasSize();
-render();
-window.addEventListener('resize',onResize);
-window.addEventListener('orientationchange',()=>setTimeout(onResize,200));
+setCanvasSize(); render();
+window.addEventListener('resize',()=>{ setCanvasSize(); render(); });
 applyLang('en');
 </script>
 </body>
