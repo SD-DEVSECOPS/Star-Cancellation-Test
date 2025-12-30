@@ -76,7 +76,7 @@ button{background:#0b74de;color:white;border:none;cursor:pointer;}
 const CONFIG={
     smallStarsCount:56, demoSmallStars:2, smallStarR:11,
     largeStarsCount:52, largeStarR:20,
-    lettersCount:13, wordFont:16,
+    lettersCount:13, wordsCount:11, wordFont:16,
     MAX_PLACEMENT_ATTEMPTS:10000, minGap:10,
     MIN_STROKE_LEN:6, MAX_STROKE_LEN:115
 };
@@ -235,6 +235,7 @@ function applyLang(lang){
 function setCanvasSize(){
     const wrap=document.getElementById('canvasWrap');
     const styleW=wrap.clientWidth, styleH=Math.round(window.innerHeight*0.72);
+    DPR=window.devicePixelRatio||1;
     canvas.width=Math.floor(styleW*DPR);
     canvas.height=Math.floor(styleH*DPR);
     canvas.style.width=styleW+'px';
@@ -268,10 +269,10 @@ function formatTime(sec){
 
 /* PLACEMENT */
 function placeObjects(){
-    CONFIG.smallStarsCount = parseInt(document.getElementById('smallStarsInput').value);
-    CONFIG.largeStarsCount = parseInt(document.getElementById('largeStarsInput').value);
-    CONFIG.lettersCount = parseInt(document.getElementById('lettersInput').value);
-    CONFIG.wordsCount = parseInt(document.getElementById('wordsInput').value);
+    CONFIG.smallStarsCount = parseInt(document.getElementById('smallStarsInput').value,10);
+    CONFIG.largeStarsCount = parseInt(document.getElementById('largeStarsInput').value,10);
+    CONFIG.lettersCount = parseInt(document.getElementById('lettersInput').value,10);
+    CONFIG.wordsCount = parseInt(document.getElementById('wordsInput').value,10);
 
     objects=[]; smallStars=[];
     const W=canvas.width/DPR, H=canvas.height/DPR;
@@ -296,7 +297,7 @@ function placeObjects(){
         objects.push(o); smallStars.push(o);
     }
 
-    const remaining=CONFIG.smallStarsCount - CONFIG.demoSmallStars;
+    const remaining=Math.max(0, CONFIG.smallStarsCount - CONFIG.demoSmallStars);
     for(let i=0;i<remaining;i++){
         const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2;
         const areaX = i < remaining/2 ? 0 : W/2;
@@ -347,7 +348,8 @@ function placeObjects(){
 
     placeGeneric(CONFIG.wordsCount,()=>{
         const font=CONFIG.wordFont*scaleFactor;
-        const t = LANG[currentLang].wordsList[Math.floor(randBetween(0,LANG[currentLang].wordsList.length))];
+        const list=LANG[currentLang].wordsList;
+        const t = list[Math.floor(randBetween(0,list.length))];
         const w = Math.max(20,t.length*font*0.6), h=font*1.2;
         return {
             id:`W${Math.random()}`,
@@ -385,7 +387,7 @@ function render(){
 
             if(testFinished){
                 if(o.cancelled){
-                    color='#000'; 
+                    color='#000';
                 } else if(!o.demo){
                     color='#d9534f';
                 }
@@ -454,7 +456,7 @@ function render(){
 /* DIRECTION DETECTOR */
 function computeDirection(x1,y1,x2,y2){
     const dx=x2-x1, dy=y2-y1;
-    let code = Math.abs(dx)>Math.abs(dy)
+    const code = Math.abs(dx)>Math.abs(dy)
         ? (dx>0?'ltr':'rtl')
         : (dy>0?'ttb':'btt');
     return {code, text:LANG[currentLang].dirStrings[code]};
@@ -536,14 +538,14 @@ function startTest(){
     startTime=Date.now();
     drawEnabled=true;
 
-    placeObjects();
-    setCanvasSize();
+    setCanvasSize();   // FIX: size + scaleFactor first
+    placeObjects();    // FIX: then place using correct W/H and scaleFactor
     render();
 
     document.getElementById('finishBtn').disabled=false;
     document.getElementById('startBtn').disabled=true;
 
-    let sec=parseInt(document.getElementById('timeoutMinutes').value)*60;
+    let sec=parseInt(document.getElementById('timeoutMinutes').value,10)*60;
     document.getElementById('timer').textContent='Time Left: '+formatTime(sec);
     clearInterval(countdownInterval);
 
@@ -864,7 +866,7 @@ document.querySelectorAll('#languageButtons button')
     .forEach(b=>b.addEventListener('click',()=>applyLang(b.dataset.lang)));
 
 setCanvasSize(); render();
-window.addEventListener('resize',()=>{setCanvasSize();render();});
+window.addEventListener('resize',()=>{ setCanvasSize(); render(); });
 applyLang('en');
 </script>
 </body>
