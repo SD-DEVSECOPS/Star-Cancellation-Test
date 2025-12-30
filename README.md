@@ -59,7 +59,11 @@ Compatible with all modern browsers:
 ## 🧪 How to Use
 
 **Live Test Page:**  
+For Star Cancellation Test:
 https://sd-devsecops.github.io/Star-Cancellation-Test/CancellationOfConstellation.html
+
+For Objects only Test:
+https://sd-devsecops.github.io/Star-Cancellation-Test/ObjectCancellation.html
 
 1. Optionally adjust counts of stars, letters, and words.  
 2. Select test duration.  
