@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cancellation Test</title>
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;display:flex;flex-direction:column;align-items:center;padding:16px;}
+h1{margin:6px 0 8px;font-size:20px;}
+#topRow{width:100%;max-width:1100px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+#controls{background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.06);display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+#languageButtons{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+#objectButtons{display:flex;gap:6px;align-items:center;margin-left:10px;}
+.objectBtn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:30px;border-radius:6px;border:1px solid #ccc;
+  background:#fff;color:#111;cursor:pointer;user-select:none;
+}
+.objectBtn.active{outline:2px solid #0b74de;border-color:#0b74de;}
+input,button,select{font-size:14px;padding:6px;border-radius:4px;border:1px solid #ccc;}
+button{background:#0b74de;color:white;border:none;cursor:pointer;}
+#canvasWrap{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+#canvas{display:block;width:100%;height:72vh;border:1px solid #ddd;touch-action:none;}
+.small{font-size:13px;color:#666;}
+#timer{width:100%;max-width:1100px;margin-top:4px;font-weight:bold;text-align:right;}
+#statsPanel{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.04);display:none;}
+#finalStats .starOrder{margin-top:8px;font-size:14px;}
+#finalStats table{width:100%;border-collapse:collapse;margin-top:8px;}
+#finalStats th, #finalStats td{border:1px solid #ddd;padding:6px;text-align:left;font-size:13px;}
+#userForm{display:none;margin-top:12px;gap:8px;background:#fff;padding:12px;border-radius:6px;width:100%;max-width:1100px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
+#userForm input{width:160px;}
+.settings{margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.settings input{width:70px;}
+</style>
+</head>
+<body>
+<h1 id="pageTitle">Cancellation Test</h1>
+
+<div class="settings">
+  <label id="labelSmallObject">Small objects (50-80): <input id="smallObjectInput" type="number" value="56"></label>
+  <label id="labelBigObject">Big objects (50-70): <input id="bigObjectInput" type="number" value="52"></label>
+</div>
+
+<div id="topRow">
+  <div id="controls">
+    <label class="small" id="labelTimeout">Timeout (minutes):</label>
+    <select id="timeoutMinutes"><option>10</option><option>5</option><option>2</option></select>
+    <button id="startBtn">Start Test</button>
+    <button id="finishBtn" disabled>Finish Test</button>
+    <button id="resetBtn">Reset Test</button>
+  </div>
+
+  <div id="languageButtons">
+    <button data-lang="en">English</button>
+    <button data-lang="tr">Türkçe</button>
+    <button data-lang="de">Deutsch</button>
+
+    <div id="objectButtons" aria-label="Object selection">
+      <button class="objectBtn active" data-object="star" title="Stars" aria-label="Stars">★</button>
+      <button class="objectBtn" data-object="heart" title="Hearts" aria-label="Hearts">♥</button>
+      <button class="objectBtn" data-object="bell" title="Bells" aria-label="Bells">🔔</button>
+    </div>
+  </div>
+</div>
+
+<div id="timer">Time Left: --:--</div>
+
+<div id="canvasWrap"><canvas id="canvas"></canvas></div>
+
+<div id="statsPanel"><div id="finalStats"></div></div>
+
+<div id="userForm">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <input id="name" placeholder="Name">
+    <input id="surname" placeholder="Surname">
+    <input id="age" placeholder="Age" type="number">
+    <button id="downloadCsv">Download CSV</button>
+    <button id="downloadPng">Download PNG</button>
+    <button id="downloadPatternPng">Download Pattern PNG</button>
+  </div>
+  <div class="small" style="margin-top:8px">
+    CSV & PNG format: <code>XXXXXXXX_name_surname_age</code>
+  </div>
+</div>
+
+<script>
+/* CONFIG */
+const CONFIG={
+  smallObjectCount:56, demoSmallObjects:2, smallObjectR:11,
+  bigObjectCount:52, bigObjectR:20,
+  MAX_PLACEMENT_ATTEMPTS:10000, minGap:10,
+  MIN_STROKE_LEN:6, MAX_STROKE_LEN:115
+};
+
+/* STATE */
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
+let DPR=window.devicePixelRatio||1, objects=[], smallObjects=[], strokes=[], rng=Math.random;
+let testStarted=false, testFinished=false, drawEnabled=false, startTime=null, countdownInterval=null, stats={};
+let fileCode="";
+let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
+
+let tempStroke=null;
+let isDrawing=false, startPoint=null;
+
+let cancelOrder = [];
+let currentObjectType = 'star';
+
+/* LANGUAGES */
+const LANG={
+  en:{
+    pageTitle:'Cancellation Test',
+    labelSmallObject:'Small objects (50-80):',
+    labelBigObject:'Big objects (50-70):',
+    labelTimeout:'Timeout (minutes):',
+    startBtn:'Start Test',
+    finishBtn:'Finish Test',
+    resetBtn:'Reset Test',
+    alertFill:'Fill all fields',
+    alertTime:'Time exceeded. Test auto-finished.',
+    results:{
+      title:'Results',
+      cancelled:'Cancelled',
+      left:'Left',
+      right:'Right',
+      laterality:'Laterality Index',
+      USN:'USN',
+      duration:'Duration',
+      avgtime:'Avg time per correct object',
+      hitLines:'Lines hitting a small object',
+      missLines:'Lines missing all small objects',
+      orderTitle:'Cancellation order (first → last)',
+      strokeTableHeaders:['Stroke #','Object Names','x1','y1','x2','y2','Direction','Correct']
+    },
+    csv:{
+      name:'Name',surname:'Surname',age:'Age',
+      totalSmall:'TotalSmall',demoCount:'DemoCount',maxScore:'MaxScore',
+      cancelled:'Cancelled',left:'Left',right:'Right',
+      laterality:'LateralityIndex',USN:'USN',
+      duration:'DurationSeconds',avg:'AvgPerCorrect',
+      hitLines:'HitLines',missLines:'MissLines',
+      strokes:'Strokes',
+      strokeCols:['Stroke#','ObjectNames','x1','y1','x2','y2','Direction','Correct']
+    },
+    dirStrings:{ltr:'Left->Right',rtl:'Right->Left',ttb:'Top->Bottom',btt:'Bottom->Top'}
+  },
+
+  tr:{
+    pageTitle:'İptal Testi',
+    labelSmallObject:'Küçük nesneler (50-80):',
+    labelBigObject:'Büyük nesneler (50-70):',
+    labelTimeout:'Zaman Aşımı (dakika):',
+    startBtn:'Testi Başlat',
+    finishBtn:'Testi Bitir',
+    resetBtn:'Testi Sıfırla',
+    alertFill:'Tüm alanları doldurun',
+    alertTime:'Süre doldu. Test otomatik olarak bitirildi.',
+    results:{
+      title:'Sonuçlar',
+      cancelled:'Silinenler',
+      left:'Sol',
+      right:'Sağ',
+      laterality:'Laterallik İndeksi',
+      USN:'USN',
+      duration:'Süre',
+      avgtime:'Doğru başına ort. süre',
+      hitLines:'En az 1 küçük nesne içeren çizgi',
+      missLines:'Hiç küçük nesne içermeyen çizgi',
+      orderTitle:'İşaretleme sırası (ilk → son)',
+      strokeTableHeaders:['Çizgi #','Nesne Adları','x1','y1','x2','y2','Yön','Doğru']
+    },
+    csv:{
+      name:'İsim',surname:'Soyisim',age:'Yaş',
+      totalSmall:'ToplamKüçük',demoCount:'DemoSayısı',maxScore:'MaksSkor',
+      cancelled:'Silinen',left:'Sol',right:'Sağ',
+      laterality:'LaterallikIndeksi',USN:'USN',
+      duration:'SüreSaniye',avg:'OrtSaniye',
+      hitLines:'NesneliCizgi',missLines:'BosCizgi',
+      strokes:'Çizgiler',
+      strokeCols:['Çizgi#','NesneAdları','x1','y1','x2','y2','Yön','Doğru']
+    },
+    dirStrings:{ltr:'Sol→Sağ',rtl:'Sağ→Sol',ttb:'Üst→Alt',btt:'Alt→Üst'}
+  },
+
+  de:{
+    pageTitle:'Streich-Test',
+    labelSmallObject:'Kleine Objekte (50-80):',
+    labelBigObject:'Große Objekte (50-70):',
+    labelTimeout:'Zeitlimit (Minuten):',
+    startBtn:'Test Starten',
+    finishBtn:'Test Beenden',
+    resetBtn:'Test Zurücksetzen',
+    alertFill:'Alle Felder ausfüllen',
+    alertTime:'Zeit überschritten. Test automatisch beendet.',
+    results:{
+      title:'Ergebnisse',
+      cancelled:'Storniert',
+      left:'Links',
+      right:'Rechts',
+      laterality:'Lateralisierungsindex',
+      USN:'USN',
+      duration:'Dauer',
+      avgtime:'Durchschn. Zeit pro Treffer',
+      hitLines:'Linien mit ≥1 kleinem Objekt',
+      missLines:'Linien ohne kleines Objekt',
+      orderTitle:'Markierungsreihenfolge (erst → zuletzt)',
+      strokeTableHeaders:['Strich #','Objektnamen','x1','y1','x2','y2','Richtung','Korrekt']
+    },
+    csv:{
+      name:'Name',surname:'Nachname',age:'Alter',
+      totalSmall:'GesamtKlein',demoCount:'DemoAnzahl',maxScore:'MaxPunkte',
+      cancelled:'Storniert',left:'Links',right:'Rechts',
+      laterality:'Lateralisierungsindex',USN:'USN',
+      duration:'DauerSekunden',avg:'SchnittProTreffer',
+      hitLines:'TrefferLinien',missLines:'FehlLinien',
+      strokes:'Striche',
+      strokeCols:['Strich#','ObjektNamen','x1','y1','x2','y2','Richtung','Korrekt']
+    },
+    dirStrings:{ltr:'Links→Rechts',rtl:'Rechts→Links',ttb:'Oben→Unten',btt:'Unten→Oben'}
+  }
+};
+
+let currentLang='en';
+function applyLang(lang){
+  currentLang=lang;
+  const t=LANG[lang];
+  document.getElementById('pageTitle').textContent=t.pageTitle;
+  document.getElementById('labelSmallObject').childNodes[0].textContent=t.labelSmallObject+' ';
+  document.getElementById('labelBigObject').childNodes[0].textContent=t.labelBigObject+' ';
+  document.getElementById('labelTimeout').textContent=t.labelTimeout;
+  document.getElementById('startBtn').textContent=t.startBtn;
+  document.getElementById('finishBtn').textContent=t.finishBtn;
+  document.getElementById('resetBtn').textContent=t.resetBtn;
+}
+
+/* UTILS */
+function setCanvasSize(){
+  const wrap=document.getElementById('canvasWrap');
+  const styleW=wrap.clientWidth, styleH=Math.round(window.innerHeight*0.72);
+  DPR=window.devicePixelRatio||1;
+  canvas.width=Math.floor(styleW*DPR);
+  canvas.height=Math.floor(styleH*DPR);
+  canvas.style.width=styleW+'px';
+  canvas.style.height=styleH+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
+}
+function randBetween(a,b){return a+(b-a)*rng();}
+function rectOverlap(a,b,pad=CONFIG.minGap*scaleFactor){
+  return !(a.x+a.w+pad<=b.x-pad || a.x-pad>=b.x+b.w+pad || a.y+a.h+pad<=b.y-pad || a.y-pad>=b.y+b.h+pad);
+}
+function segLen(x1,y1,x2,y2){return Math.hypot(x2-x1,y2-y1);}
+function segIntersects(obj,x1,y1,x2,y2){
+  const samples=10;
+  for(let i=0;i<=samples;i++){
+    const t=i/samples;
+    const px=x1+(x2-x1)*t, py=y1+(y2-y1)*t;
+    if(px>=obj.x && px<=obj.x+obj.w && py>=obj.y && py<=obj.y+obj.h) return true;
+  }
+  return false;
+}
+function getCanvasPoint(e){
+  const r=canvas.getBoundingClientRect();
+  return {x:e.clientX-r.left, y:e.clientY-r.top};
+}
+function formatTime(sec){
+  const m=Math.floor(sec/60).toString().padStart(2,'0');
+  const s=(sec%60).toString().padStart(2,'0');
+  return `${m}:${s}`;
+}
+
+/* PLACEMENT */
+function placeObjects(){
+  CONFIG.smallObjectCount = parseInt(document.getElementById('smallObjectInput').value,10);
+  CONFIG.bigObjectCount = parseInt(document.getElementById('bigObjectInput').value,10);
+
+  objects=[]; smallObjects=[];
+  const W=canvas.width/DPR, H=canvas.height/DPR;
+
+  function tryPlace(w,h,areaX,areaW){
+    for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){
+      const x=randBetween(areaX,areaX+areaW-w), y=randBetween(0,H-h);
+      const c={x,y,w,h};
+      let ok=true;
+      for(const o of objects){
+        if(rectOverlap(c,o)){ ok=false; break; }
+      }
+      if(ok) return c;
+    }
+    return {x:randBetween(areaX,areaX+areaW-w),y:randBetween(0,H-h),w,h};
+  }
+
+  for(let i=0;i<CONFIG.demoSmallObjects;i++){
+    const r=CONFIG.smallObjectR*scaleFactor,w=r*2,h=r*2;
+    const pos=tryPlace(w,h,W/2-20*scaleFactor,40*scaleFactor);
+    const o={id:`S${i+1}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:true,cancelled:false};
+    objects.push(o); smallObjects.push(o);
+  }
+
+  const remaining=Math.max(0, CONFIG.smallObjectCount - CONFIG.demoSmallObjects);
+  for(let i=0;i<remaining;i++){
+    const r=CONFIG.smallObjectR*scaleFactor,w=r*2,h=r*2;
+    const areaX = i < remaining/2 ? 0 : W/2;
+    const pos = tryPlace(w,h,areaX,W/2);
+    const o={id:`S${i+1+CONFIG.demoSmallObjects}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:false,cancelled:false};
+    objects.push(o); smallObjects.push(o);
+  }
+
+  for(let i=0;i<CONFIG.bigObjectCount;i++){
+    const r=CONFIG.bigObjectR*scaleFactor,w=r*2,h=r*2;
+    const pos=tryPlace(w,h,0,W);
+    objects.push({id:`L${Math.random()}`,type:'big',x:pos.x,y:pos.y,w,h,r});
+  }
+}
+
+/* ICON DRAWING */
+function drawStar(cx,cy,r,color='#000'){
+  const spikes=5,outer=r,inner=r*0.45;
+  let rot=Math.PI/2*3;
+  ctx.beginPath();
+  ctx.moveTo(cx,cy-outer);
+  for(let i=0;i<spikes;i++){
+    ctx.lineTo(cx+Math.cos(rot)*outer,cy+Math.sin(rot)*outer); rot+=Math.PI/spikes;
+    ctx.lineTo(cx+Math.cos(rot)*inner,cy+Math.sin(rot)*inner); rot+=Math.PI/spikes;
+  }
+  ctx.closePath();
+  ctx.fillStyle=color;
+  ctx.fill();
+}
+
+function drawHeart(cx, cy, r, color = '#000') {
+  const s = r / 16;
+  ctx.beginPath();
+  for (let t = 0; t <= Math.PI * 2 + 0.001; t += 0.08) {
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    const px = cx + x * s;
+    const py = cy - y * s;
+    if (t === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.lineWidth = Math.max(1, r * 0.08);
+  ctx.strokeStyle = color;
+  ctx.stroke();
+}
+
+/* NEW BELL (more "bell", less "cupcake") */
+function drawBell(cx, cy, r, color = '#000') {
+  // A clearer bell: small knob, dome, flared body, bottom rim, clapper
+  const s = r; // use r as main scale unit
+
+  const knobR = 0.12 * s;
+  const domeTopY = cy - 0.78 * s;
+  const domeMidY = cy - 0.35 * s;
+  const rimY = cy + 0.52 * s;
+
+  const leftShoulderX = cx - 0.55 * s;
+  const rightShoulderX = cx + 0.55 * s;
+
+  const leftRimX = cx - 0.70 * s;
+  const rightRimX = cx + 0.70 * s;
+
+  // Knob
+  ctx.beginPath();
+  ctx.arc(cx, domeTopY + knobR*1.2, knobR, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // Bell body
+  ctx.beginPath();
+  ctx.moveTo(cx - 0.35 * s, domeMidY);
+  ctx.quadraticCurveTo(cx, domeTopY, cx + 0.35 * s, domeMidY);
+
+  // Sides flare outward
+  ctx.bezierCurveTo(
+    cx + 0.65 * s, cy - 0.05 * s,
+    rightShoulderX, cy + 0.22 * s,
+    rightRimX, rimY
+  );
+
+  // Bottom rim curve
+  ctx.quadraticCurveTo(cx, cy + 0.62 * s, leftRimX, rimY);
+
+  // Back up left side
+  ctx.bezierCurveTo(
+    leftShoulderX, cy + 0.22 * s,
+    cx - 0.65 * s, cy - 0.05 * s,
+    cx - 0.35 * s, domeMidY
+  );
+
+  ctx.closePath();
+
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  // Inner cut hint (rim line) for "bell" look
+  ctx.beginPath();
+  ctx.moveTo(cx - 0.55 * s, rimY);
+  ctx.quadraticCurveTo(cx, cy + 0.55 * s, cx + 0.55 * s, rimY);
+  ctx.lineWidth = Math.max(1, r * 0.08);
+  ctx.strokeStyle = color;
+  ctx.stroke();
+
+  // Clapper
+  ctx.beginPath();
+  ctx.arc(cx, cy + 0.43 * s, 0.18 * s, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawIcon(cx,cy,r,color){
+  if(currentObjectType==='heart') return drawHeart(cx,cy,r,color);
+  if(currentObjectType==='bell') return drawBell(cx,cy,r,color);
+  return drawStar(cx,cy,r,color);
+}
+
+/* RENDER EVERYTHING */
+function render(){
+  ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR);
+
+  for(const o of objects){
+    const cx=o.x+o.w/2, cy=o.y+o.h/2;
+
+    if(o.type==='small'){
+      let color=o.demo?'#888':'#000';
+
+      if(testFinished){
+        if(o.cancelled) color='#000';
+        else if(!o.demo) color='#d9534f';
+      }
+
+      drawIcon(cx,cy,o.r,color);
+
+      if(o.demo){
+        ctx.strokeStyle='#d9534f';
+        ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(o.x,o.y); ctx.lineTo(o.x+o.w,o.y+o.h);
+        ctx.moveTo(o.x,o.y+o.h); ctx.lineTo(o.x+o.w,o.y);
+        ctx.stroke();
+      }
+
+      if(testFinished && o.cancelled){
+        ctx.fillStyle='#0066cc';
+        ctx.font=`${22*scaleFactor}px Arial`;
+        ctx.fillText(o.id, o.x, Math.max(22, o.y-6));
+      }
+    } else if(o.type==='big'){
+      drawIcon(cx,cy,o.r,'#000');
+    }
+  }
+
+  strokes.forEach((s,idx)=>{
+    ctx.strokeStyle = testFinished
+      ? (s.objectIds.length>0 ? '#2eb82e' : '#d9534f')
+      : '#007acc';
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(s.x1,s.y1);
+    ctx.lineTo(s.x2,s.y2);
+    ctx.stroke();
+
+    if(testFinished){
+      ctx.fillStyle='#ff8800';
+      ctx.font=`${16*scaleFactor}px Arial`;
+      ctx.fillText(idx+1, s.x1+4, s.y1-4);
+    }
+  });
+
+  if(tempStroke){
+    ctx.strokeStyle='#007acc';
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(tempStroke.x1,tempStroke.y1);
+    ctx.lineTo(tempStroke.x2,tempStroke.y2);
+    ctx.stroke();
+  }
+}
+
+/* DIRECTION DETECTOR */
+function computeDirection(x1,y1,x2,y2){
+  const dx=x2-x1, dy=y2-y1;
+  const code = Math.abs(dx)>Math.abs(dy)
+    ? (dx>0?'ltr':'rtl')
+    : (dy>0?'ttb':'btt');
+  return {code, text:LANG[currentLang].dirStrings[code]};
+}
+
+/* POINTER EVENTS */
+function pointerDown(e){
+  if(!drawEnabled||testFinished) return;
+  e.preventDefault();
+  startPoint=getCanvasPoint(e);
+  isDrawing=true;
+  tempStroke={x1:startPoint.x,y1:startPoint.y,x2:startPoint.x,y2:startPoint.y};
+  render();
+}
+function pointerMove(e){
+  if(!drawEnabled||testFinished||!isDrawing) return;
+  e.preventDefault();
+  const p=getCanvasPoint(e);
+  tempStroke.x2=p.x; tempStroke.y2=p.y;
+  render();
+}
+function pointerUp(e){
+  if(!drawEnabled||testFinished||!isDrawing) return;
+  e.preventDefault();
+  const end=getCanvasPoint(e);
+  isDrawing=false;
+
+  const len=segLen(startPoint.x,startPoint.y,end.x,end.y);
+  if(len<CONFIG.MIN_STROKE_LEN*scaleFactor || len>CONFIG.MAX_STROKE_LEN*scaleFactor){
+    tempStroke=null; render(); return;
+  }
+
+  let hits=[];
+  for(const s of smallObjects){
+    if(s.demo) continue;
+    if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);
+  }
+
+  if(hits.length>1){
+    const sx=startPoint.x, sy=startPoint.y, ex=end.x, ey=end.y;
+    hits.sort((a,b)=>{
+      const ax=a.x+a.w/2, ay=a.y+a.h/2;
+      const bx=b.x+b.w/2, by=b.y+b.h/2;
+      const tA=((ax-sx)*(ex-sx)+(ay-sy)*(ey-sy))/(((ex-sx)**2+(ey-sy)**2)||1);
+      const tB=((bx-sx)*(ex-sx)+(by-sy)*(ey-sy))/(((ex-sx)**2+(ey-sy)**2)||1);
+      return tA - tB;
+    });
+  }
+
+  let hitIds=[];
+  for(const s of hits){
+    if(!s.cancelled){
+      s.cancelled=true;
+      cancelOrder.push(s.id);
+    }
+    hitIds.push(s.id);
+  }
+
+  const dir=computeDirection(startPoint.x,startPoint.y,end.x,end.y);
+
+  strokes.push({
+    x1:startPoint.x, y1:startPoint.y,
+    x2:end.x, y2:end.y,
+    objectIds:hitIds,
+    objectCorrect:hitIds.length>0,
+    directionCode:dir.code,
+    directionText:dir.text,
+    timestamp:Date.now()
+  });
+
+  tempStroke=null;
+  render();
+}
+
+/* TIMER + TEST CONTROL */
+function startTest(){
+  testStarted=true; testFinished=false;
+  strokes=[]; cancelOrder=[];
+  startTime=Date.now();
+  drawEnabled=true;
+
+  setCanvasSize();
+  placeObjects();
+  render();
+
+  document.getElementById('finishBtn').disabled=false;
+  document.getElementById('startBtn').disabled=true;
+
+  let sec=parseInt(document.getElementById('timeoutMinutes').value,10)*60;
+  document.getElementById('timer').textContent='Time Left: '+formatTime(sec);
+  clearInterval(countdownInterval);
+
+  countdownInterval=setInterval(()=>{
+    sec--;
+    document.getElementById('timer').textContent='Time Left: '+formatTime(sec);
+    if(sec<=0){
+      clearInterval(countdownInterval);
+      finishTest();
+      alert(LANG[currentLang].alertTime);
+    }
+  },1000);
+}
+
+function finishTest(){
+  if(!testStarted||testFinished) return;
+  testFinished=true;
+  drawEnabled=false;
+  clearInterval(countdownInterval);
+  document.getElementById('timer').textContent='Time Left: 00:00';
+  render();
+  computeStats();
+
+  document.getElementById('statsPanel').style.display='block';
+  document.getElementById('userForm').style.display='flex';
+
+  document.getElementById('finishBtn').disabled=true;
+  document.getElementById('startBtn').disabled=false;
+
+  fileCode=Math.floor(Math.random()*1e8).toString().padStart(8,'0');
+}
+
+function resetTest(){
+  clearInterval(countdownInterval);
+  testStarted=false; testFinished=false;
+  strokes=[]; objects=[]; smallObjects=[];
+  cancelOrder=[];
+  drawEnabled=false;
+  document.getElementById('statsPanel').style.display='none';
+  document.getElementById('userForm').style.display='none';
+  document.getElementById('startBtn').disabled=false;
+  document.getElementById('finishBtn').disabled=true;
+  document.getElementById('timer').textContent='Time Left: --:--';
+  setCanvasSize();
+  render();
+}
+
+/* STATS */
+function computeStats(){
+  const scored = smallObjects.filter(s=>!s.demo);
+  const cancelled = scored.filter(s=>s.cancelled).length;
+  const leftCancelled = scored.filter(s=>s.cancelled && (s.x+s.w/2) < (canvas.width/DPR)/2).length;
+  const rightCancelled = cancelled - leftCancelled;
+
+  const lateralityIndex = cancelled>0 ? leftCancelled/cancelled : 0;
+  let USN='None';
+  if(lateralityIndex<=0.46) USN='Left';
+  else if(lateralityIndex>=0.54) USN='Right';
+
+  const duration = Math.round((Date.now()-startTime)/1000);
+  const avgTime = cancelled>0 ? (duration/cancelled).toFixed(2) : '—';
+
+  const hitLines = strokes.filter(s=>s.objectCorrect).length;
+  const missLines = strokes.length - hitLines;
+
+  stats={
+    totalSmall:smallObjects.length,
+    demoCount:smallObjects.filter(s=>s.demo).length,
+    maxScore:scored.length,
+    cancelled,
+    cancelledLeft:leftCancelled,
+    cancelledRight:rightCancelled,
+    lateralityIndex,
+    USN,
+    durationSeconds:duration,
+    avgTime,
+    hitLines,
+    missLines
+  };
+
+  const r=LANG[currentLang].results;
+
+  let html=`<strong>${r.title}</strong><br>
+    ${r.cancelled}: ${cancelled}/${scored.length}<br>
+    ${r.left}: ${leftCancelled} | ${r.right}: ${rightCancelled}<br>
+    ${r.laterality}: ${lateralityIndex.toFixed(2)}<br>
+    ${r.USN}: ${USN}<br>
+    ${r.duration}: ${duration}s<br>
+    ${r.avgtime}: ${avgTime}s<br>
+    ${r.hitLines}: ${hitLines}<br>
+    ${r.missLines}: ${missLines}<br>`;
+
+  html+=`<div class="starOrder"><strong>${r.orderTitle}:</strong> `;
+  html+=cancelOrder.length ? cancelOrder.join(' → ') : '—';
+  html+=`</div>`;
+
+  const headers=r.strokeTableHeaders;
+  html+=`<div style="overflow:auto"><table><thead><tr>`;
+  headers.forEach(h=>html+=`<th>${h}</th>`);
+  html+=`</tr></thead><tbody>`;
+
+  strokes.forEach((s,i)=>{
+    html+=`<tr>
+      <td>${i+1}</td>
+      <td>${s.objectIds.join('|')}</td>
+      <td>${Math.round(s.x1)}</td>
+      <td>${Math.round(s.y1)}</td>
+      <td>${Math.round(s.x2)}</td>
+      <td>${Math.round(s.y2)}</td>
+      <td>${s.directionText}</td>
+      <td>${s.objectCorrect?'True':'False'}</td>
+    </tr>`;
+  });
+
+  html+=`</tbody></table></div>`;
+  document.getElementById('finalStats').innerHTML=html;
+}
+
+/* CSV EXPORT */
+function csvSafe(v){
+  if(v===undefined||v===null) return '';
+  const s=String(v);
+  if(/[,"\n\r]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+  return s;
+}
+
+function downloadCSV(){
+  const name=document.getElementById('name').value.trim();
+  const surname=document.getElementById('surname').value.trim();
+  const age=document.getElementById('age').value.trim();
+  if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
+
+  const c=LANG[currentLang].csv;
+  let rows=[];
+
+  rows.push([c.name,name]);
+  rows.push([c.surname,surname]);
+  rows.push([c.age,age]);
+  rows.push([]);
+  rows.push([c.totalSmall,stats.totalSmall]);
+  rows.push([c.demoCount,stats.demoCount]);
+  rows.push([c.maxScore,stats.maxScore]);
+  rows.push([c.cancelled,stats.cancelled]);
+  rows.push([c.left,stats.cancelledLeft]);
+  rows.push([c.right,stats.cancelledRight]);
+  rows.push([c.laterality,stats.lateralityIndex]);
+  rows.push([c.USN,stats.USN]);
+  rows.push([c.duration,stats.durationSeconds]);
+  rows.push([c.avg,stats.avgTime]);
+  rows.push([c.hitLines,stats.hitLines]);
+  rows.push([c.missLines,stats.missLines]);
+  rows.push([]);
+  rows.push([c.strokes]);
+  rows.push(c.strokeCols);
+
+  strokes.forEach((s,i)=>{
+    rows.push([
+      i+1,
+      s.objectIds.join('|'),
+      Math.round(s.x1),
+      Math.round(s.y1),
+      Math.round(s.x2),
+      Math.round(s.y2),
+      s.directionText,
+      s.objectCorrect?'True':'False'
+    ]);
+  });
+
+  rows.push([]);
+  const orderHeader=LANG[currentLang].results.orderTitle;
+  rows.push([orderHeader, cancelOrder.join(' → ')]);
+
+  const csv='\uFEFF' + rows.map(r=>r.map(csvSafe).join(',')).join('\r\n');
+
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`${fileCode}_${name}_${surname}_${age}.csv`;
+  a.click();
+}
+
+/* PNG EXPORT */
+function downloadPNG(){
+  const name=document.getElementById('name').value.trim();
+  const surname=document.getElementById('surname').value.trim();
+  const age=document.getElementById('age').value.trim();
+  if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
+
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = canvas.width;
+  exportCanvas.height = canvas.height;
+
+  const ex = exportCanvas.getContext("2d");
+  ex.fillStyle = "#ffffff";
+  ex.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+  ex.drawImage(canvas, 0, 0);
+
+  exportCanvas.toBlob(b=>{
+    const url=URL.createObjectURL(b);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`${fileCode}_${name}_${surname}_${age}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+/* PATTERN PNG EXPORT */
+function downloadPatternPNG(){
+  const name=document.getElementById('name').value.trim();
+  const surname=document.getElementById('surname').value.trim();
+  const age=document.getElementById('age').value.trim();
+  if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
+
+  const patternCanvas=document.createElement("canvas");
+  patternCanvas.width=canvas.width;
+  patternCanvas.height=canvas.height;
+  const pctx=patternCanvas.getContext("2d");
+
+  pctx.fillStyle="#ffffff";
+  pctx.fillRect(0,0,patternCanvas.width,patternCanvas.height);
+
+  function pStar(cx,cy,r,color='#000'){
+    const spikes=5,outer=r,inner=r*0.45;
+    let rot=Math.PI/2*3;
+    pctx.beginPath();
+    pctx.moveTo(cx,cy-outer);
+    for(let i=0;i<spikes;i++){
+      pctx.lineTo(cx+Math.cos(rot)*outer,cy+Math.sin(rot)*outer); rot+=Math.PI/spikes;
+      pctx.lineTo(cx+Math.cos(rot)*inner,cy+Math.sin(rot)*inner); rot+=Math.PI/spikes;
+    }
+    pctx.closePath();
+    pctx.fillStyle=color;
+    pctx.fill();
+  }
+  function pHeart(cx, cy, r, color = '#000') {
+    const s = r / 16;
+    pctx.beginPath();
+    for (let t = 0; t <= Math.PI * 2 + 0.001; t += 0.08) {
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      const px = cx + x * s;
+      const py = cy - y * s;
+      if (t === 0) pctx.moveTo(px, py);
+      else pctx.lineTo(px, py);
+    }
+    pctx.closePath();
+    pctx.fillStyle = color;
+    pctx.fill();
+    pctx.lineWidth = Math.max(1, r * 0.08);
+    pctx.strokeStyle = color;
+    pctx.stroke();
+  }
+  function pBell(cx, cy, r, color = '#000') {
+    const s = r;
+
+    const knobR = 0.12 * s;
+    const domeTopY = cy - 0.78 * s;
+    const domeMidY = cy - 0.35 * s;
+    const rimY = cy + 0.52 * s;
+
+    const leftShoulderX = cx - 0.55 * s;
+    const rightShoulderX = cx + 0.55 * s;
+
+    const leftRimX = cx - 0.70 * s;
+    const rightRimX = cx + 0.70 * s;
+
+    pctx.beginPath();
+    pctx.arc(cx, domeTopY + knobR*1.2, knobR, 0, Math.PI*2);
+    pctx.fillStyle = color;
+    pctx.fill();
+
+    pctx.beginPath();
+    pctx.moveTo(cx - 0.35 * s, domeMidY);
+    pctx.quadraticCurveTo(cx, domeTopY, cx + 0.35 * s, domeMidY);
+    pctx.bezierCurveTo(
+      cx + 0.65 * s, cy - 0.05 * s,
+      rightShoulderX, cy + 0.22 * s,
+      rightRimX, rimY
+    );
+    pctx.quadraticCurveTo(cx, cy + 0.62 * s, leftRimX, rimY);
+    pctx.bezierCurveTo(
+      leftShoulderX, cy + 0.22 * s,
+      cx - 0.65 * s, cy - 0.05 * s,
+      cx - 0.35 * s, domeMidY
+    );
+    pctx.closePath();
+    pctx.fillStyle = color;
+    pctx.fill();
+
+    pctx.beginPath();
+    pctx.moveTo(cx - 0.55 * s, rimY);
+    pctx.quadraticCurveTo(cx, cy + 0.55 * s, cx + 0.55 * s, rimY);
+    pctx.lineWidth = Math.max(1, r * 0.08);
+    pctx.strokeStyle = color;
+    pctx.stroke();
+
+    pctx.beginPath();
+    pctx.arc(cx, cy + 0.43 * s, 0.18 * s, 0, Math.PI*2);
+    pctx.fillStyle = color;
+    pctx.fill();
+  }
+  function pIcon(cx,cy,r,color){
+    if(currentObjectType==='heart') return pHeart(cx,cy,r,color);
+    if(currentObjectType==='bell') return pBell(cx,cy,r,color);
+    return pStar(cx,cy,r,color);
+  }
+
+  pctx.globalAlpha=0.15;
+  smallObjects.forEach(s=>{
+    const cx=(s.x+s.w/2)*DPR;
+    const cy=(s.y+s.h/2)*DPR;
+    const rr=Math.max(3, (s.r*0.55))*DPR;
+    pIcon(cx,cy,rr,"#000000");
+  });
+  pctx.globalAlpha=1;
+
+  pctx.lineCap="round";
+  strokes.forEach((s,i)=>{
+    pctx.lineWidth=3*DPR;
+    pctx.strokeStyle = s.objectCorrect ? "#2eb82e" : "#d9534f";
+    pctx.beginPath();
+    pctx.moveTo(s.x1*DPR,s.y1*DPR);
+    pctx.lineTo(s.x2*DPR,s.y2*DPR);
+    pctx.stroke();
+
+    pctx.fillStyle="#ff8800";
+    pctx.font=`${18*DPR}px Arial`;
+    pctx.fillText(i+1,s.x1*DPR+6,s.y1*DPR-6);
+  });
+
+  const midpoints=strokes.map(s=>({
+    mx:(s.x1+s.x2)/2*DPR,
+    my:(s.y1+s.y2)/2*DPR
+  }));
+
+  function drawArrow(ctx2,x1,y1,x2,y2){
+    const head=12*DPR;
+    const a=Math.atan2(y2-y1,x2-x1);
+    ctx2.beginPath();
+    ctx2.moveTo(x1,y1);
+    ctx2.lineTo(x2,y2);
+    ctx2.stroke();
+
+    ctx2.beginPath();
+    ctx2.moveTo(x2,y2);
+    ctx2.lineTo(x2-head*Math.cos(a-Math.PI/6), y2-head*Math.sin(a-Math.PI/6));
+    ctx2.lineTo(x2-head*Math.cos(a+Math.PI/6), y2-head*Math.sin(a+Math.PI/6));
+    ctx2.closePath();
+    ctx2.fill();
+  }
+
+  if(midpoints.length>1){
+    pctx.strokeStyle="#555";
+    pctx.fillStyle="#555";
+    pctx.lineWidth=2*DPR;
+    for(let i=0;i<midpoints.length-1;i++){
+      drawArrow(pctx, midpoints[i].mx, midpoints[i].my, midpoints[i+1].mx, midpoints[i+1].my);
+    }
+  }
+
+  patternCanvas.toBlob(b=>{
+    const url=URL.createObjectURL(b);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`${fileCode}_${name}_${surname}_${age}_pattern.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+/* OBJECT SELECTION UI */
+function setActiveObjectType(type){
+  if(testStarted && !testFinished) return;
+  currentObjectType = type;
+  document.querySelectorAll('.objectBtn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.object===type);
+  });
+  render();
+}
+
+/* EVENT BINDINGS */
+document.getElementById('startBtn').addEventListener('click',startTest);
+document.getElementById('finishBtn').addEventListener('click',finishTest);
+document.getElementById('resetBtn').addEventListener('click',resetTest);
+document.getElementById('downloadCsv').addEventListener('click',downloadCSV);
+document.getElementById('downloadPng').addEventListener('click',downloadPNG);
+document.getElementById('downloadPatternPng').addEventListener('click',downloadPatternPNG);
+
+document.querySelectorAll('#objectButtons .objectBtn').forEach(btn=>{
+  btn.addEventListener('click',()=>setActiveObjectType(btn.dataset.object));
+});
+
+canvas.addEventListener('pointerdown',pointerDown);
+canvas.addEventListener('pointermove',pointerMove);
+canvas.addEventListener('pointerup',pointerUp);
+canvas.addEventListener('pointercancel',pointerUp);
+canvas.addEventListener('pointerleave',()=>{if(isDrawing){isDrawing=false;tempStroke=null;render();}});
+
+document.querySelectorAll('#languageButtons > button[data-lang]')
+  .forEach(b=>b.addEventListener('click',()=>applyLang(b.dataset.lang)));
+
+setCanvasSize(); render();
+window.addEventListener('resize',()=>{ setCanvasSize(); render(); });
+applyLang('en');
+</script>
+</body>
+</html>
