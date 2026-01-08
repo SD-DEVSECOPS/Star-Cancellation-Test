@@ -2,10 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Star Cancellation Test</title>
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;display:flex;flex-direction:column;align-items:center;padding:16px;}
+/* Prevent Selection and Blue Highlights */
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+/* Re-enable input selection so user can type name/age */
+input, select {
+    -webkit-user-select: auto;
+    user-select: auto;
+}
+
+body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;display:flex;flex-direction:column;align-items:center;padding:16px;overflow-x:hidden;}
 h1{margin:6px 0 8px;font-size:20px;}
 #topRow{width:100%;max-width:1100px;display:flex;gap:12px;align-items:center;justify-content:space-between;}
 #controls{background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.06);display:flex;gap:8px;align-items:center;}
@@ -90,8 +108,14 @@ let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
 
 let tempStroke=null;
 let isDrawing=false, startPoint=null;
-
 let starCancelOrder = [];
+
+/* DISABLE ZOOM HANDLER */
+function preventZoom(e) {
+  if (e.touches.length > 1) {
+    e.preventDefault();
+  }
+}
 
 /* LANGUAGES */
 const LANG={
@@ -538,8 +562,11 @@ function startTest(){
     startTime=Date.now();
     drawEnabled=true;
 
-    setCanvasSize();   // FIX: size + scaleFactor first
-    placeObjects();    // FIX: then place using correct W/H and scaleFactor
+    // No zoom during test
+    document.addEventListener('touchstart', preventZoom, {passive: false});
+
+    setCanvasSize();
+    placeObjects();
     render();
 
     document.getElementById('finishBtn').disabled=false;
@@ -566,6 +593,10 @@ function finishTest(){
     drawEnabled=false;
     clearInterval(countdownInterval);
     document.getElementById('timer').textContent='Time Left: 00:00';
+    
+    // Restore Zoom
+    document.removeEventListener('touchstart', preventZoom);
+
     render();
     computeStats();
 
@@ -584,6 +615,10 @@ function resetTest(){
     strokes=[]; objects=[]; smallStars=[];
     starCancelOrder=[];
     drawEnabled=false;
+
+    // Restore Zoom
+    document.removeEventListener('touchstart', preventZoom);
+
     document.getElementById('statsPanel').style.display='none';
     document.getElementById('userForm').style.display='none';
     document.getElementById('startBtn').disabled=false;
