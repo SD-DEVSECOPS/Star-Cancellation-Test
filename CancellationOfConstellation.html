@@ -198,19 +198,21 @@
 </head>
 
 <body>
-    <h1 id="pageTitle">Star Cancellation Test</h1>
-    <div style="text-align:center; font-size:13px; color:#c00; margin-bottom:5px;" id="demoNote">
-        (Stars with red lines are examples; do not cancel them)
-    </div>
+    <div id="headerArea">
+        <h1 id="pageTitle">Star Cancellation Test</h1>
+        <div style="text-align:center; font-size:13px; color:#c00; margin-bottom:5px;" id="demoNote">
+            (Stars with red lines are examples; do not cancel them)
+        </div>
 
-    <div class="settings">
-        <label id="labelSmallStars"><span>Small stars (50-80):</span> <input id="smallStarsInput" type="number"
-                value="56"></label>
-        <label id="labelLargeStars"><span>Big stars (50-70):</span> <input id="largeStarsInput" type="number"
-                value="52"></label>
-        <label id="labelLetters"><span>Letters (10-30):</span> <input id="lettersInput" type="number"
-                value="13"></label>
-        <label id="labelWords"><span>Words (10-20):</span> <input id="wordsInput" type="number" value="11"></label>
+        <div class="settings">
+            <label id="labelSmallStars"><span>Small stars (50-80):</span> <input id="smallStarsInput" type="number"
+                    value="56"></label>
+            <label id="labelLargeStars"><span>Big stars (50-70):</span> <input id="largeStarsInput" type="number"
+                    value="52"></label>
+            <label id="labelLetters"><span>Letters (10-30):</span> <input id="lettersInput" type="number"
+                    value="13"></label>
+            <label id="labelWords"><span>Words (10-20):</span> <input id="wordsInput" type="number" value="11"></label>
+        </div>
     </div>
 
     <div id="topRow">
@@ -531,10 +533,14 @@
 
             objects = []; smallStars = [];
             const W = canvas.width / DPR, H = canvas.height / DPR;
+            const pad = 12 * scaleFactor; // Buffer from edges
 
             function tryPlace(w, h, areaX, areaW) {
+                const minX = areaX + pad, maxX = Math.max(minX, areaX + areaW - w - pad);
+                const minY = pad, maxY = Math.max(minY, H - h - pad);
+
                 for (let attempt = 0; attempt < CONFIG.MAX_PLACEMENT_ATTEMPTS; attempt++) {
-                    const x = randBetween(areaX, areaX + areaW - w), y = randBetween(0, H - h);
+                    const x = randBetween(minX, maxX), y = randBetween(minY, maxY);
                     const c = { x, y, w, h };
                     let ok = true;
                     for (const o of objects) {
@@ -542,7 +548,7 @@
                     }
                     if (ok) return c;
                 }
-                return { x: randBetween(areaX, areaX + areaW - w), y: randBetween(0, H - h), w, h };
+                return { x: randBetween(minX, maxX), y: randBetween(minY, maxY), w, h };
             }
 
             for (let i = 0; i < CONFIG.demoSmallStars; i++) {
@@ -577,27 +583,27 @@
                 }
             };
 
-            placeGeneric(CONFIG.largeStarsCount, () => ({
-                id: `L${Math.random()}`,
-                type: 'large',
-                r: CONFIG.largeStarR * scaleFactor,
-                w: CONFIG.largeStarR * 2 * scaleFactor,
-                h: CONFIG.largeStarR * 2 * scaleFactor,
-                x: randBetween(0, W - 40 * scaleFactor),
-                y: randBetween(0, H - 40 * scaleFactor)
-            }));
+            placeGeneric(CONFIG.largeStarsCount, () => {
+                const r = CONFIG.largeStarR * scaleFactor, w = r * 2, h = r * 2;
+                return {
+                    id: `L${Math.random()}`,
+                    type: 'large', r, w, h,
+                    x: randBetween(pad, Math.max(pad, W - w - pad)),
+                    y: randBetween(pad, Math.max(pad, H - h - pad))
+                };
+            });
 
             const letters = 'ABCDEFGHIJKLMNOPQRSTVYZ'.split('');
             placeGeneric(CONFIG.lettersCount, () => {
                 const font = CONFIG.wordFont * scaleFactor;
                 const ch = letters[Math.floor(randBetween(0, letters.length))];
+                const w = font * 0.9, h = font * 1.2;
                 return {
                     id: `T${Math.random()}`,
                     type: 'letter',
-                    text: ch, font,
-                    w: font * 0.9, h: font * 1.2,
-                    x: randBetween(0, W - font),
-                    y: randBetween(0, H - font)
+                    text: ch, font, w, h,
+                    x: randBetween(pad, Math.max(pad, W - w - pad)),
+                    y: randBetween(pad, Math.max(pad, H - h - pad))
                 };
             });
 
@@ -609,8 +615,8 @@
                 return {
                     id: `W${Math.random()}`,
                     type: 'word', text: t, font, w, h,
-                    x: randBetween(0, W - w),
-                    y: randBetween(0, H - h)
+                    x: randBetween(pad, Math.max(pad, W - w - pad)),
+                    y: randBetween(pad, Math.max(pad, H - h - pad))
                 };
             });
         }
@@ -760,15 +766,22 @@
             window.addEventListener('wheel', preventWheel, { passive: false });
             window.addEventListener('keydown', preventKeys, { passive: false });
 
-            scrollYBeforeLock = window.scrollY;
-            totalPausedMs = 0;
-            pausedAt = null;
-            document.body.style.top = `-${scrollYBeforeLock}px`;
-            document.body.classList.add("noScroll");
             setLangButtonsDisabled(true);
             setSettingsDisabled(true);
 
-            setCanvasSize(); placeObjects(); render();
+            // Important: Hide header and Lock scroll BEFORE measuring and placing
+            document.getElementById('headerArea').style.display = 'none';
+            window.scrollTo(0, 0);
+            scrollYBeforeLock = window.scrollY;
+            document.body.classList.add("noScroll");
+
+            setCanvasSize();
+            placeObjects();
+            render();
+
+            totalPausedMs = 0;
+            pausedAt = null;
+            document.body.style.top = `-${scrollYBeforeLock}px`;
 
             document.getElementById('finishBtn').disabled = false;
             document.getElementById('startBtn').disabled = true;
@@ -829,6 +842,8 @@
             window.removeEventListener('wheel', preventWheel);
             window.removeEventListener('keydown', preventKeys);
             document.body.classList.remove("noScroll");
+            document.getElementById('headerArea').style.display = 'block';
+
             const y = scrollYBeforeLock || 0;
             document.body.style.top = "";
             window.scrollTo(0, y);
@@ -857,6 +872,8 @@
             window.removeEventListener('wheel', preventWheel);
             window.removeEventListener('keydown', preventKeys);
             document.body.classList.remove("noScroll");
+            document.getElementById('headerArea').style.display = 'block';
+
             const yr = scrollYBeforeLock || 0;
             document.body.style.top = "";
             window.scrollTo(0, yr);
