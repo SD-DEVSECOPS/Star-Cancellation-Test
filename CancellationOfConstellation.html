@@ -83,6 +83,11 @@
             cursor: pointer;
         }
 
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
         #canvasWrap {
             width: 100%;
             max-width: 1100px;
@@ -177,11 +182,20 @@
 <body>
     <h1 id="pageTitle">Star Cancellation Test</h1>
 
+    <!-- Fix #6: Demo Note -->
+    <div style="text-align:center; font-size:13px; color:#c00; margin-bottom:5px;" id="demoNote">
+        (Stars with red lines are examples; do not cancel them)
+    </div>
+
+    <!-- Fix #5: Wrapped labels in spans for robust updating -->
     <div class="settings">
-        <label id="labelSmallStars">Small stars (50-80): <input id="smallStarsInput" type="number" value="56"></label>
-        <label id="labelLargeStars">Big stars (50-70): <input id="largeStarsInput" type="number" value="52"></label>
-        <label id="labelLetters">Letters (10-30): <input id="lettersInput" type="number" value="13"></label>
-        <label id="labelWords">Words (10-20): <input id="wordsInput" type="number" value="11"></label>
+        <label id="labelSmallStars"><span>Small stars (50-80):</span> <input id="smallStarsInput" type="number"
+                value="56"></label>
+        <label id="labelLargeStars"><span>Big stars (50-70):</span> <input id="largeStarsInput" type="number"
+                value="52"></label>
+        <label id="labelLetters"><span>Letters (10-30):</span> <input id="lettersInput" type="number"
+                value="13"></label>
+        <label id="labelWords"><span>Words (10-20):</span> <input id="wordsInput" type="number" value="11"></label>
     </div>
 
     <div id="topRow">
@@ -257,6 +271,7 @@
         const LANG = {
             en: {
                 pageTitle: 'Star Cancellation Test',
+                demoNote: '(Stars with red lines are examples; do not cancel them)',
                 labelSmallStars: 'Small stars (50-80):',
                 labelLargeStars: 'Big stars (50-70):',
                 labelLetters: 'Letters (10-30):',
@@ -297,6 +312,7 @@
 
             tr: {
                 pageTitle: 'Yıldız Silme Testi',
+                demoNote: '(Kırmızı çizgili yıldızlar örnektir, onları çizmeyin)',
                 labelSmallStars: 'Küçük yıldızlar (50-80):',
                 labelLargeStars: 'Büyük yıldızlar (50-70):',
                 labelLetters: 'Harfler (10-30):',
@@ -332,11 +348,12 @@
                     strokeCols: ['Çizgi#', 'YıldızAdları', 'x1', 'y1', 'x2', 'y2', 'Yön', 'Doğru']
                 },
                 dirStrings: { ltr: 'Sol→Sağ', rtl: 'Sağ→Sol', ttb: 'Üst→Alt', btt: 'Alt→Üst' },
-                wordsList:["TEN","TUT","GÜN","KIZ","OKU","ADAM","KEK","KOL","KAR","STAR"]
+                wordsList: ["TEN", "TUT", "GÜN", "KIZ", "OKU", "ADAM", "KEK", "KOL", "KAR", "STAR"]
             },
 
             de: {
                 pageTitle: 'Stern-Streich-Test',
+                demoNote: '(Sterne mit roten Linien sind Beispiele; nicht durchstreichen)',
                 labelSmallStars: 'Kleine Sterne (50-80):',
                 labelLargeStars: 'Große Sterne (50-70):',
                 labelLetters: 'Buchstaben (10-30):',
@@ -381,10 +398,14 @@
             currentLang = lang;
             const t = LANG[lang];
             document.getElementById('pageTitle').textContent = t.pageTitle;
-            document.getElementById('labelSmallStars').childNodes[0].textContent = t.labelSmallStars + ' ';
-            document.getElementById('labelLargeStars').childNodes[0].textContent = t.labelLargeStars + ' ';
-            document.getElementById('labelLetters').childNodes[0].textContent = t.labelLetters + ' ';
-            document.getElementById('labelWords').childNodes[0].textContent = t.labelWords + ' ';
+            if (document.getElementById('demoNote')) document.getElementById('demoNote').textContent = t.demoNote;
+
+            // Fix #5: Use span targeting
+            document.querySelector('#labelSmallStars span').textContent = t.labelSmallStars + ' ';
+            document.querySelector('#labelLargeStars span').textContent = t.labelLargeStars + ' ';
+            document.querySelector('#labelLetters span').textContent = t.labelLetters + ' ';
+            document.querySelector('#labelWords span').textContent = t.labelWords + ' ';
+
             document.getElementById('labelTimeout').textContent = t.labelTimeout;
             document.getElementById('startBtn').textContent = t.startBtn;
             document.getElementById('finishBtn').textContent = t.finishBtn;
@@ -403,6 +424,16 @@
             ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
             scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
         }
+
+        // Fix #4: Helper functions
+        function safeFilePart(s) {
+            return (s || "").replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 40);
+        }
+        function setLangButtonsDisabled(disabled) {
+            const btns = document.querySelectorAll('#languageButtons button');
+            btns.forEach(b => b.disabled = disabled);
+        }
+
         function randBetween(a, b) { return a + (b - a) * rng(); }
         function rectOverlap(a, b, pad = CONFIG.minGap * scaleFactor) {
             return !(a.x + a.w + pad <= b.x - pad || a.x - pad >= b.x + b.w + pad || a.y + a.h + pad <= b.y - pad || a.y - pad >= b.y + b.h + pad);
@@ -415,8 +446,12 @@
 
             // Check intersection with any of the 4 rectangle sides
             const lineLine = (x3, y3, x4, y4) => {
-                const uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
-                const uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+                // Fix #1: Guard divide by zero
+                const denom = ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+                if (Math.abs(denom) < 1e-9) return false;
+
+                const uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+                const uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
                 return (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1);
             };
 
@@ -712,6 +747,9 @@
             // No zoom during test
             document.addEventListener('touchstart', preventZoom, { passive: false });
 
+            // Fix #3: Language locking
+            setLangButtonsDisabled(true);
+
             setCanvasSize();
             placeObjects();
             render();
@@ -753,6 +791,8 @@
             document.getElementById('finishBtn').disabled = true;
             document.getElementById('startBtn').disabled = false;
 
+            setLangButtonsDisabled(false);
+
             fileCode = Math.floor(Math.random() * 1e8).toString().padStart(8, '0');
         }
 
@@ -770,6 +810,8 @@
             document.getElementById('userForm').style.display = 'none';
             document.getElementById('startBtn').disabled = false;
             document.getElementById('finishBtn').disabled = true;
+            setLangButtonsDisabled(false);
+
             document.getElementById('timer').textContent = 'Time Left: --:--';
             setCanvasSize();
             render();
@@ -856,9 +898,10 @@
         }
 
         function downloadCSV() {
-            const name = document.getElementById('name').value.trim();
-            const surname = document.getElementById('surname').value.trim();
-            const age = document.getElementById('age').value.trim();
+            // Fix #4: Safe filenames
+            const name = safeFilePart(document.getElementById('name').value.trim());
+            const surname = safeFilePart(document.getElementById('surname').value.trim());
+            const age = safeFilePart(document.getElementById('age').value.trim());
             if (!name || !surname || !age) { alert(LANG[currentLang].alertFill); return; }
 
             const c = LANG[currentLang].csv;
@@ -912,9 +955,9 @@
 
         /* PNG EXPORT */
         function downloadPNG() {
-            const name = document.getElementById('name').value.trim();
-            const surname = document.getElementById('surname').value.trim();
-            const age = document.getElementById('age').value.trim();
+            const name = safeFilePart(document.getElementById('name').value.trim());
+            const surname = safeFilePart(document.getElementById('surname').value.trim());
+            const age = safeFilePart(document.getElementById('age').value.trim());
             if (!name || !surname || !age) { alert(LANG[currentLang].alertFill); return; }
 
             const exportCanvas = document.createElement("canvas");
@@ -938,9 +981,9 @@
 
         /* PATTERN PNG EXPORT WITH GREEN/RED STROKES + ARROWS */
         function downloadPatternPNG() {
-            const name = document.getElementById('name').value.trim();
-            const surname = document.getElementById('surname').value.trim();
-            const age = document.getElementById('age').value.trim();
+            const name = safeFilePart(document.getElementById('name').value.trim());
+            const surname = safeFilePart(document.getElementById('surname').value.trim());
+            const age = safeFilePart(document.getElementById('age').value.trim());
             if (!name || !surname || !age) { alert(LANG[currentLang].alertFill); return; }
 
             const patternCanvas = document.createElement("canvas");
@@ -952,13 +995,16 @@
             pctx.fillStyle = "#ffffff";
             pctx.fillRect(0, 0, patternCanvas.width, patternCanvas.height);
 
-            // Faint stars for context
-            pctx.globalAlpha = 0.15;
+            // Faint stars for context (Fix #2: Dynamic radius)
+            pctx.globalAlpha = 0.2;
             smallStars.forEach(s => {
+                if (s.demo) return;
                 const cx = s.x + s.w / 2;
                 const cy = s.y + s.h / 2;
                 pctx.beginPath();
-                pctx.arc(cx * DPR, cy * DPR, 6 * DPR, 0, Math.PI * 2);
+                // Proportional radius instead of fixed 6
+                const r = Math.max(3, 0.4 * s.w);
+                pctx.arc(cx, cy, r, 0, Math.PI * 2);
                 pctx.fillStyle = "#000000";
                 pctx.fill();
             });
@@ -971,20 +1017,20 @@
                 pctx.strokeStyle = s.starCorrect ? "#2eb82e" : "#d9534f";
 
                 pctx.beginPath();
-                pctx.moveTo(s.x1 * DPR, s.y1 * DPR);
-                pctx.lineTo(s.x2 * DPR, s.y2 * DPR);
+                pctx.moveTo(s.x1, s.y1);
+                pctx.lineTo(s.x2, s.y2);
                 pctx.stroke();
 
                 // Stroke number label (orange like main canvas)
                 pctx.fillStyle = "#ff8800";
                 pctx.font = `${18 * DPR}px Arial`;
-                pctx.fillText(i + 1, s.x1 * DPR + 6, s.y1 * DPR - 6);
+                pctx.fillText(i + 1, s.x1 + 6, s.y1 - 6);
             });
 
             // Compute midpoints
             const midpoints = strokes.map(s => {
-                const mx = (s.x1 + s.x2) / 2 * DPR;
-                const my = (s.y1 + s.y2) / 2 * DPR;
+                const mx = (s.x1 + s.x2) / 2;
+                const my = (s.y1 + s.y2) / 2;
                 return { mx, my };
             });
 
