@@ -1,669 +1,816 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Star Cancellation Test</title>
-<style>
-/* Prevent Selection and Blue Highlights */
-* {
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-/* Re-enable input selection so user can type name/age */
-input, select {
-    -webkit-user-select: auto;
-    user-select: auto;
-}
+    <meta charset="utf-8" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Star Cancellation Test</title>
+    <style>
+        /* Prevent Selection and Blue Highlights */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
 
-body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;display:flex;flex-direction:column;align-items:center;padding:16px;overflow-x:hidden;}
-h1{margin:6px 0 8px;font-size:20px;}
-#topRow{width:100%;max-width:1100px;display:flex;gap:12px;align-items:center;justify-content:space-between;}
-#controls{background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.06);display:flex;gap:8px;align-items:center;}
-#languageButtons{display:flex;gap:4px;}
-input,button,select{font-size:14px;padding:6px;border-radius:4px;border:1px solid #ccc;}
-button{background:#0b74de;color:white;border:none;cursor:pointer;}
-#canvasWrap{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
-#canvas{display:block;width:100%;height:72vh;border:1px solid #ddd;touch-action:none;}
-.small{font-size:13px;color:#666;}
-#timer{width:100%;max-width:1100px;margin-top:4px;font-weight:bold;text-align:right;}
-#statsPanel{width:100%;max-width:1100px;margin-top:12px;background:#fff;padding:12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.04);display:none;}
-#finalStats .starOrder{margin-top:8px;font-size:14px;}
-#finalStats table{width:100%;border-collapse:collapse;margin-top:8px;}
-#finalStats th, #finalStats td{border:1px solid #ddd;padding:6px;text-align:left;font-size:13px;}
-#userForm{display:none;margin-top:12px;gap:8px;background:#fff;padding:12px;border-radius:6px;width:100%;max-width:1100px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
-#userForm input{width:160px;}
-.settings{margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-.settings input{width:60px;}
-</style>
+        /* Re-enable input selection so user can type name/age */
+        input,
+        select {
+            -webkit-user-select: auto;
+            user-select: auto;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            margin: 6px 0 8px;
+            font-size: 20px;
+        }
+
+        #topRow {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #controls {
+            background: #fff;
+            padding: 12px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #languageButtons {
+            display: flex;
+            gap: 4px;
+        }
+
+        input,
+        button,
+        select {
+            font-size: 14px;
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background: #0b74de;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #canvasWrap {
+            width: 100%;
+            max-width: 1100px;
+            margin-top: 12px;
+            background: #fff;
+            padding: 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 72vh;
+            border: 1px solid #ddd;
+            touch-action: none;
+        }
+
+        .small {
+            font-size: 13px;
+            color: #666;
+        }
+
+        #timer {
+            width: 100%;
+            max-width: 1100px;
+            margin-top: 4px;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        #statsPanel {
+            width: 100%;
+            max-width: 1100px;
+            margin-top: 12px;
+            background: #fff;
+            padding: 12px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            display: none;
+        }
+
+        #finalStats .starOrder {
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        #finalStats table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        #finalStats th,
+        #finalStats td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        #userForm {
+            display: none;
+            margin-top: 12px;
+            gap: 8px;
+            background: #fff;
+            padding: 12px;
+            border-radius: 6px;
+            width: 100%;
+            max-width: 1100px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        #userForm input {
+            width: 160px;
+        }
+
+        .settings {
+            margin-bottom: 8px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .settings input {
+            width: 60px;
+        }
+    </style>
 </head>
+
 <body>
-<h1 id="pageTitle">Star Cancellation Test</h1>
+    <h1 id="pageTitle">Star Cancellation Test</h1>
 
-<div class="settings">
-    <label id="labelSmallStars">Small stars (50-80): <input id="smallStarsInput" type="number" value="56"></label>
-    <label id="labelLargeStars">Big stars (50-70): <input id="largeStarsInput" type="number" value="52"></label>
-    <label id="labelLetters">Letters (10-30): <input id="lettersInput" type="number" value="13"></label>
-    <label id="labelWords">Words (10-20): <input id="wordsInput" type="number" value="11"></label>
-</div>
+    <div class="settings">
+        <label id="labelSmallStars">Small stars (50-80): <input id="smallStarsInput" type="number" value="56"></label>
+        <label id="labelLargeStars">Big stars (50-70): <input id="largeStarsInput" type="number" value="52"></label>
+        <label id="labelLetters">Letters (10-30): <input id="lettersInput" type="number" value="13"></label>
+        <label id="labelWords">Words (10-20): <input id="wordsInput" type="number" value="11"></label>
+    </div>
 
-<div id="topRow">
-  <div id="controls">
-    <label class="small" id="labelTimeout">Timeout (minutes):</label>
-    <select id="timeoutMinutes"><option>10</option><option>5</option><option>2</option></select>
-    <button id="startBtn">Start Test</button>
-    <button id="finishBtn" disabled>Finish Test</button>
-    <button id="resetBtn">Reset Test</button>
-  </div>
-  <div id="languageButtons">
-    <button data-lang="en">English</button>
-    <button data-lang="tr">Türkçe</button>
-    <button data-lang="de">Deutsch</button>
-  </div>
-</div>
+    <div id="topRow">
+        <div id="controls">
+            <label class="small" id="labelTimeout">Timeout (minutes):</label>
+            <select id="timeoutMinutes">
+                <option>10</option>
+                <option>5</option>
+                <option>2</option>
+            </select>
+            <button id="startBtn">Start Test</button>
+            <button id="finishBtn" disabled>Finish Test</button>
+            <button id="resetBtn">Reset Test</button>
+        </div>
+        <div id="languageButtons">
+            <button data-lang="en">English</button>
+            <button data-lang="tr">Türkçe</button>
+            <button data-lang="de">Deutsch</button>
+        </div>
+    </div>
 
-<div id="timer">Time Left: --:--</div>
+    <div id="timer">Time Left: --:--</div>
 
-<div id="canvasWrap"><canvas id="canvas"></canvas></div>
+    <div id="canvasWrap"><canvas id="canvas"></canvas></div>
 
-<div id="statsPanel"><div id="finalStats"></div></div>
+    <div id="statsPanel">
+        <div id="finalStats"></div>
+    </div>
 
-<div id="userForm">
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <input id="name" placeholder="Name">
-    <input id="surname" placeholder="Surname">
-    <input id="age" placeholder="Age" type="number">
-    <button id="downloadCsv">Download CSV</button>
-    <button id="downloadPng">Download PNG</button>
-    <button id="downloadPatternPng">Download Pattern PNG</button>
-  </div>
-  <div class="small" style="margin-top:8px">
-    CSV & PNG format: <code>XXXXXXXX_name_surname_age</code>
-  </div>
-</div>
+    <div id="userForm">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input id="name" placeholder="Name">
+            <input id="surname" placeholder="Surname">
+            <input id="age" placeholder="Age" type="number">
+            <button id="downloadCsv">Download CSV</button>
+            <button id="downloadPng">Download PNG</button>
+            <button id="downloadPatternPng">Download Pattern PNG</button>
+        </div>
+        <div class="small" style="margin-top:8px">
+            CSV & PNG format: <code>XXXXXXXX_name_surname_age</code>
+        </div>
+    </div>
 
-<script>
-/* CONFIG */
-const CONFIG={
-    smallStarsCount:56, demoSmallStars:2, smallStarR:11,
-    largeStarsCount:52, largeStarR:20,
-    lettersCount:13, wordsCount:11, wordFont:16,
-    MAX_PLACEMENT_ATTEMPTS:10000, minGap:10,
-    MIN_STROKE_LEN:6, MAX_STROKE_LEN:115
-};
-
-/* STATE */
-const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
-let DPR=window.devicePixelRatio||1, objects=[], smallStars=[], strokes=[], rng=Math.random;
-let testStarted=false, testFinished=false, drawEnabled=false, startTime=null, countdownInterval=null, stats={};
-let fileCode="";
-let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
-
-let tempStroke=null;
-let isDrawing=false, startPoint=null;
-let starCancelOrder = [];
-
-/* DISABLE ZOOM HANDLER */
-function preventZoom(e) {
-  if (e.touches.length > 1) {
-    e.preventDefault();
-  }
-}
-
-/* LANGUAGES */
-const LANG={
-  en:{
-    pageTitle:'Star Cancellation Test',
-    labelSmallStars:'Small stars (50-80):',
-    labelLargeStars:'Big stars (50-70):',
-    labelLetters:'Letters (10-30):',
-    labelWords:'Words (10-20):',
-    labelTimeout:'Timeout (minutes):',
-    startBtn:'Start Test',
-    finishBtn:'Finish Test',
-    resetBtn:'Reset Test',
-    alertFill:'Fill all fields',
-    alertTime:'Time exceeded. Test auto-finished.',
-    results:{
-      title:'Results',
-      cancelled:'Cancelled',
-      left:'Left',
-      right:'Right',
-      laterality:'Laterality Index',
-      USN:'USN',
-      duration:'Duration',
-      avgtime:'Avg time per correct star',
-      hitLines:'Lines hitting a small star',
-      missLines:'Lines missing all small stars',
-      orderTitle:'Cancellation order (first → last)',
-      strokeTableHeaders:['Stroke #','Star Names','x1','y1','x2','y2','Direction','Correct']
-    },
-    csv:{
-      name:'Name',surname:'Surname',age:'Age',
-      totalSmall:'TotalSmall',demoCount:'DemoCount',maxScore:'MaxScore',
-      cancelled:'Cancelled',left:'Left',right:'Right',
-      laterality:'LateralityIndex',USN:'USN',
-      duration:'DurationSeconds',avg:'AvgPerCorrect',
-      hitLines:'HitLines',missLines:'MissLines',
-      strokes:'Strokes',
-      strokeCols:['Stroke#','StarNames','x1','y1','x2','y2','Direction','Correct']
-    },
-    dirStrings:{ltr:'Left->Right',rtl:'Right->Left',ttb:'Top->Bottom',btt:'Bottom->Top'},
-    wordsList:["SUN","MOON","WATER","HOUSE","ROAD","SAND","BRANCH","VILLAGE","BOY","HAND"]
-  },
-
-  tr:{
-    pageTitle:'Yıldız Silme Testi',
-    labelSmallStars:'Küçük yıldızlar (50-80):',
-    labelLargeStars:'Büyük yıldızlar (50-70):',
-    labelLetters:'Harfler (10-30):',
-    labelWords:'Kelimeler (10-20):',
-    labelTimeout:'Zaman Aşımı (dakika):',
-    startBtn:'Testi Başlat',
-    finishBtn:'Testi Bitir',
-    resetBtn:'Testi Sıfırla',
-    alertFill:'Tüm alanları doldurun',
-    alertTime:'Süre doldu. Test otomatik olarak bitirildi.',
-    results:{
-      title:'Sonuçlar',
-      cancelled:'Silinenler',
-      left:'Sol',
-      right:'Sağ',
-      laterality:'Laterallik İndeksi',
-      USN:'USN',
-      duration:'Süre',
-      avgtime:'Doğru başına ort. süre',
-      hitLines:'En az 1 küçük yıldız içeren çizgi',
-      missLines:'Hiç küçük yıldız içermeyen çizgi',
-      orderTitle:'İşaretleme sırası (ilk → son)',
-      strokeTableHeaders:['Çizgi #','Yıldız Adları','x1','y1','x2','y2','Yön','Doğru']
-    },
-    csv:{
-      name:'İsim',surname:'Soyisim',age:'Yaş',
-      totalSmall:'ToplamKüçükYıldız',demoCount:'DemoSayısı',maxScore:'MaksSkor',
-      cancelled:'Silinen',left:'Sol',right:'Sağ',
-      laterality:'LaterallikIndeksi',USN:'USN',
-      duration:'SüreSaniye',avg:'OrtSaniye',
-      hitLines:'YildizliCizgi',missLines:'BossCizgi',
-      strokes:'Çizgiler',
-      strokeCols:['Çizgi#','YıldızAdları','x1','y1','x2','y2','Yön','Doğru']
-    },
-    dirStrings:{ltr:'Sol→Sağ',rtl:'Sağ→Sol',ttb:'Üst→Alt',btt:'Alt→Üst'},
-    wordsList:["TEN","TUT","GÜN","KIZ","OKU","ADAM","KEK","KOL","KAR","STAR"]
-  },
-
-  de:{
-    pageTitle:'Stern-Streich-Test',
-    labelSmallStars:'Kleine Sterne (50-80):',
-    labelLargeStars:'Große Sterne (50-70):',
-    labelLetters:'Buchstaben (10-30):',
-    labelWords:'Wörter (10-20):',
-    labelTimeout:'Zeitlimit (Minuten):',
-    startBtn:'Test Starten',
-    finishBtn:'Test Beenden',
-    resetBtn:'Test Zurücksetzen',
-    alertFill:'Alle Felder ausfüllen',
-    alertTime:'Zeit überschritten. Test automatisch beendet.',
-    results:{
-      title:'Ergebnisse',
-      cancelled:'Storniert',
-      left:'Links',
-      right:'Rechts',
-      laterality:'Lateralisierungsindex',
-      USN:'USN',
-      duration:'Dauer',
-      avgtime:'Durchschn. Zeit pro Treffer',
-      hitLines:'Linien mit ≥1 kleinem Stern',
-      missLines:'Linien ohne kleinen Stern',
-      orderTitle:'Markierungsreihenfolge (erst → zuletzt)',
-      strokeTableHeaders:['Strich #','Sternnamen','x1','y1','x2','y2','Richtung','Korrekt']
-    },
-    csv:{
-      name:'Name',surname:'Nachname',age:'Alter',
-      totalSmall:'GesamtKlein',demoCount:'DemoAnzahl',maxScore:'MaxPunkte',
-      cancelled:'Storniert',left:'Links',right:'Rechts',
-      laterality:'Lateralisierungsindex',USN:'USN',
-      duration:'DauerSekunden',avg:'SchnittProTreffer',
-      hitLines:'TrefferLinien',missLines:'FehlLinien',
-      strokes:'Striche',
-      strokeCols:['Strich#','SternNamen','x1','y1','x2','y2','Richtung','Korrekt']
-    },
-    dirStrings:{ltr:'Links→Rechts',rtl:'Rechts→Links',ttb:'Oben→Unten',btt:'Unten→Oben'},
-    wordsList:["SONNE","MOND","WASSER","HAUS","STRASSE","SAND","AST","DORF","JUNGE","HAND"]
-  }
-};
-
-let currentLang='en';
-function applyLang(lang){
-  currentLang=lang;
-  const t=LANG[lang];
-  document.getElementById('pageTitle').textContent=t.pageTitle;
-  document.getElementById('labelSmallStars').childNodes[0].textContent=t.labelSmallStars+' ';
-  document.getElementById('labelLargeStars').childNodes[0].textContent=t.labelLargeStars+' ';
-  document.getElementById('labelLetters').childNodes[0].textContent=t.labelLetters+' ';
-  document.getElementById('labelWords').childNodes[0].textContent=t.labelWords+' ';
-  document.getElementById('labelTimeout').textContent=t.labelTimeout;
-  document.getElementById('startBtn').textContent=t.startBtn;
-  document.getElementById('finishBtn').textContent=t.finishBtn;
-  document.getElementById('resetBtn').textContent=t.resetBtn;
-}
-
-/* UTILS */
-function setCanvasSize(){
-    const wrap=document.getElementById('canvasWrap');
-    const styleW=wrap.clientWidth, styleH=Math.round(window.innerHeight*0.72);
-    DPR=window.devicePixelRatio||1;
-    canvas.width=Math.floor(styleW*DPR);
-    canvas.height=Math.floor(styleH*DPR);
-    canvas.style.width=styleW+'px';
-    canvas.style.height=styleH+'px';
-    ctx.setTransform(DPR,0,0,DPR,0,0);
-    scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
-}
-function randBetween(a,b){return a+(b-a)*rng();}
-function rectOverlap(a,b,pad=CONFIG.minGap*scaleFactor){
-    return !(a.x+a.w+pad<=b.x-pad || a.x-pad>=b.x+b.w+pad || a.y+a.h+pad<=b.y-pad || a.y-pad>=b.y+b.h+pad);
-}
-function segLen(x1,y1,x2,y2){return Math.hypot(x2-x1,y2-y1);}
-function segIntersects(obj,x1,y1,x2,y2){
-    const samples=10;
-    for(let i=0;i<=samples;i++){
-        const t=i/samples;
-        const px=x1+(x2-x1)*t, py=y1+(y2-y1)*t;
-        if(px>=obj.x && px<=obj.x+obj.w && py>=obj.y && py<=obj.y+obj.h) return true;
-    }
-    return false;
-}
-function getCanvasPoint(e){
-    const r=canvas.getBoundingClientRect();
-    return {x:e.clientX-r.left, y:e.clientY-r.top};
-}
-function formatTime(sec){
-    const m=Math.floor(sec/60).toString().padStart(2,'0');
-    const s=(sec%60).toString().padStart(2,'0');
-    return `${m}:${s}`;
-}
-
-/* PLACEMENT */
-function placeObjects(){
-    CONFIG.smallStarsCount = parseInt(document.getElementById('smallStarsInput').value,10);
-    CONFIG.largeStarsCount = parseInt(document.getElementById('largeStarsInput').value,10);
-    CONFIG.lettersCount = parseInt(document.getElementById('lettersInput').value,10);
-    CONFIG.wordsCount = parseInt(document.getElementById('wordsInput').value,10);
-
-    objects=[]; smallStars=[];
-    const W=canvas.width/DPR, H=canvas.height/DPR;
-
-    function tryPlace(w,h,areaX,areaW){
-        for(let attempt=0;attempt<CONFIG.MAX_PLACEMENT_ATTEMPTS;attempt++){
-            const x=randBetween(areaX,areaX+areaW-w), y=randBetween(0,H-h);
-            const c={x,y,w,h};
-            let ok=true;
-            for(const o of objects){
-                if(rectOverlap(c,o)){ ok=false; break; }
-            }
-            if(ok) return c;
-        }
-        return {x:randBetween(areaX,areaX+areaW-w),y:randBetween(0,H-h),w,h};
-    }
-
-    for(let i=0;i<CONFIG.demoSmallStars;i++){
-        const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2;
-        const pos=tryPlace(w,h,W/2-20*scaleFactor,40*scaleFactor);
-        const o={id:`S${i+1}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:true,cancelled:false};
-        objects.push(o); smallStars.push(o);
-    }
-
-    const remaining=Math.max(0, CONFIG.smallStarsCount - CONFIG.demoSmallStars);
-    for(let i=0;i<remaining;i++){
-        const r=CONFIG.smallStarR*scaleFactor,w=r*2,h=r*2;
-        const areaX = i < remaining/2 ? 0 : W/2;
-        const pos = tryPlace(w,h,areaX,W/2);
-        const o={id:`S${i+1+CONFIG.demoSmallStars}`,type:'small',x:pos.x,y:pos.y,w,h,r,demo:false,cancelled:false};
-        objects.push(o); smallStars.push(o);
-    }
-
-    const placeGeneric=(count,propsGen)=>{
-        for(let i=0;i<count;i++){
-            let o=null;
-            for(let k=0;k<CONFIG.MAX_PLACEMENT_ATTEMPTS;k++){
-                const pos=propsGen();
-                o={...pos};
-                let ok=true;
-                for(const z of objects){
-                    if(rectOverlap(o,z)) { ok=false; break; }
-                }
-                if(ok) break;
-            }
-            objects.push(o);
-        }
-    };
-
-    placeGeneric(CONFIG.largeStarsCount,()=>({
-        id:`L${Math.random()}`,
-        type:'large',
-        r:CONFIG.largeStarR*scaleFactor,
-        w:CONFIG.largeStarR*2*scaleFactor,
-        h:CONFIG.largeStarR*2*scaleFactor,
-        x:randBetween(0,W-40*scaleFactor),
-        y:randBetween(0,H-40*scaleFactor)
-    }));
-
-    const letters='ABCDEFGHIJKLMNOPQRSTVYZ'.split('');
-    placeGeneric(CONFIG.lettersCount,()=>{
-        const font=CONFIG.wordFont*scaleFactor;
-        const ch = letters[Math.floor(randBetween(0,letters.length))];
-        return {
-            id:`T${Math.random()}`,
-            type:'letter',
-            text:ch,font,
-            w:font*0.9,h:font*1.2,
-            x:randBetween(0,W-font),
-            y:randBetween(0,H-font)
+    <script>
+        /* CONFIG */
+        const CONFIG = {
+            smallStarsCount: 56, demoSmallStars: 2, smallStarR: 11,
+            largeStarsCount: 52, largeStarR: 20,
+            lettersCount: 13, wordsCount: 11, wordFont: 16,
+            MAX_PLACEMENT_ATTEMPTS: 10000, minGap: 10,
+            MIN_STROKE_LEN: 6, MAX_STROKE_LEN: 115
         };
-    });
 
-    placeGeneric(CONFIG.wordsCount,()=>{
-        const font=CONFIG.wordFont*scaleFactor;
-        const list=LANG[currentLang].wordsList;
-        const t = list[Math.floor(randBetween(0,list.length))];
-        const w = Math.max(20,t.length*font*0.6), h=font*1.2;
-        return {
-            id:`W${Math.random()}`,
-            type:'word',text:t,font,w,h,
-            x:randBetween(0,W-w),
-            y:randBetween(0,H-h)
+        /* STATE */
+        const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+        let DPR = window.devicePixelRatio || 1, objects = [], smallStars = [], strokes = [], rng = Math.random;
+        let testStarted = false, testFinished = false, drawEnabled = false, startTime = null, countdownInterval = null, stats = {};
+        let fileCode = "";
+        let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
+
+        let tempStroke = null;
+        let isDrawing = false, startPoint = null;
+        let starCancelOrder = [];
+
+        /* DISABLE ZOOM HANDLER */
+        function preventZoom(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }
+
+        /* LANGUAGES */
+        const LANG = {
+            en: {
+                pageTitle: 'Star Cancellation Test',
+                labelSmallStars: 'Small stars (50-80):',
+                labelLargeStars: 'Big stars (50-70):',
+                labelLetters: 'Letters (10-30):',
+                labelWords: 'Words (10-20):',
+                labelTimeout: 'Timeout (minutes):',
+                startBtn: 'Start Test',
+                finishBtn: 'Finish Test',
+                resetBtn: 'Reset Test',
+                alertFill: 'Fill all fields',
+                alertTime: 'Time exceeded. Test auto-finished.',
+                results: {
+                    title: 'Results',
+                    cancelled: 'Cancelled',
+                    left: 'Left',
+                    right: 'Right',
+                    laterality: 'Laterality Index',
+                    USN: 'USN',
+                    duration: 'Duration',
+                    avgtime: 'Avg time per correct star',
+                    hitLines: 'Lines hitting a small star',
+                    missLines: 'Lines missing all small stars',
+                    orderTitle: 'Cancellation order (first → last)',
+                    strokeTableHeaders: ['Stroke #', 'Star Names', 'x1', 'y1', 'x2', 'y2', 'Direction', 'Correct']
+                },
+                csv: {
+                    name: 'Name', surname: 'Surname', age: 'Age',
+                    totalSmall: 'TotalSmall', demoCount: 'DemoCount', maxScore: 'MaxScore',
+                    cancelled: 'Cancelled', left: 'Left', right: 'Right',
+                    laterality: 'LateralityIndex', USN: 'USN',
+                    duration: 'DurationSeconds', avg: 'AvgPerCorrect',
+                    hitLines: 'HitLines', missLines: 'MissLines',
+                    strokes: 'Strokes',
+                    strokeCols: ['Stroke#', 'StarNames', 'x1', 'y1', 'x2', 'y2', 'Direction', 'Correct']
+                },
+                dirStrings: { ltr: 'Left->Right', rtl: 'Right->Left', ttb: 'Top->Bottom', btt: 'Bottom->Top' },
+                wordsList: ["SUN", "MOON", "WATER", "HOUSE", "ROAD", "SAND", "BRANCH", "VILLAGE", "BOY", "HAND"]
+            },
+
+            tr: {
+                pageTitle: 'Yıldız Silme Testi',
+                labelSmallStars: 'Küçük yıldızlar (50-80):',
+                labelLargeStars: 'Büyük yıldızlar (50-70):',
+                labelLetters: 'Harfler (10-30):',
+                labelWords: 'Kelimeler (10-20):',
+                labelTimeout: 'Zaman Aşımı (dakika):',
+                startBtn: 'Testi Başlat',
+                finishBtn: 'Testi Bitir',
+                resetBtn: 'Testi Sıfırla',
+                alertFill: 'Tüm alanları doldurun',
+                alertTime: 'Süre doldu. Test otomatik olarak bitirildi.',
+                results: {
+                    title: 'Sonuçlar',
+                    cancelled: 'Silinenler',
+                    left: 'Sol',
+                    right: 'Sağ',
+                    laterality: 'Laterallik İndeksi',
+                    USN: 'USN',
+                    duration: 'Süre',
+                    avgtime: 'Doğru başına ort. süre',
+                    hitLines: 'En az 1 küçük yıldız içeren çizgi',
+                    missLines: 'Hiç küçük yıldız içermeyen çizgi',
+                    orderTitle: 'İşaretleme sırası (ilk → son)',
+                    strokeTableHeaders: ['Çizgi #', 'Yıldız Adları', 'x1', 'y1', 'x2', 'y2', 'Yön', 'Doğru']
+                },
+                csv: {
+                    name: 'İsim', surname: 'Soyisim', age: 'Yaş',
+                    totalSmall: 'ToplamKüçükYıldız', demoCount: 'DemoSayısı', maxScore: 'MaksSkor',
+                    cancelled: 'Silinen', left: 'Sol', right: 'Sağ',
+                    laterality: 'LaterallikIndeksi', USN: 'USN',
+                    duration: 'SüreSaniye', avg: 'OrtSaniye',
+                    hitLines: 'YildizliCizgi', missLines: 'BossCizgi',
+                    strokes: 'Çizgiler',
+                    strokeCols: ['Çizgi#', 'YıldızAdları', 'x1', 'y1', 'x2', 'y2', 'Yön', 'Doğru']
+                },
+                dirStrings: { ltr: 'Sol→Sağ', rtl: 'Sağ→Sol', ttb: 'Üst→Alt', btt: 'Alt→Üst' },
+                wordsList:["TEN","TUT","GÜN","KIZ","OKU","ADAM","KEK","KOL","KAR","STAR"]
+            },
+
+            de: {
+                pageTitle: 'Stern-Streich-Test',
+                labelSmallStars: 'Kleine Sterne (50-80):',
+                labelLargeStars: 'Große Sterne (50-70):',
+                labelLetters: 'Buchstaben (10-30):',
+                labelWords: 'Wörter (10-20):',
+                labelTimeout: 'Zeitlimit (Minuten):',
+                startBtn: 'Test Starten',
+                finishBtn: 'Test Beenden',
+                resetBtn: 'Test Zurücksetzen',
+                alertFill: 'Alle Felder ausfüllen',
+                alertTime: 'Zeit überschritten. Test automatisch beendet.',
+                results: {
+                    title: 'Ergebnisse',
+                    cancelled: 'Storniert',
+                    left: 'Links',
+                    right: 'Rechts',
+                    laterality: 'Lateralisierungsindex',
+                    USN: 'USN',
+                    duration: 'Dauer',
+                    avgtime: 'Durchschn. Zeit pro Treffer',
+                    hitLines: 'Linien mit ≥1 kleinem Stern',
+                    missLines: 'Linien ohne kleinen Stern',
+                    orderTitle: 'Markierungsreihenfolge (erst → zuletzt)',
+                    strokeTableHeaders: ['Strich #', 'Sternnamen', 'x1', 'y1', 'x2', 'y2', 'Richtung', 'Korrekt']
+                },
+                csv: {
+                    name: 'Name', surname: 'Nachname', age: 'Alter',
+                    totalSmall: 'GesamtKlein', demoCount: 'DemoAnzahl', maxScore: 'MaxPunkte',
+                    cancelled: 'Storniert', left: 'Links', right: 'Rechts',
+                    laterality: 'Lateralisierungsindex', USN: 'USN',
+                    duration: 'DauerSekunden', avg: 'SchnittProTreffer',
+                    hitLines: 'TrefferLinien', missLines: 'FehlLinien',
+                    strokes: 'Striche',
+                    strokeCols: ['Strich#', 'SternNamen', 'x1', 'y1', 'x2', 'y2', 'Richtung', 'Korrekt']
+                },
+                dirStrings: { ltr: 'Links→Rechts', rtl: 'Rechts→Links', ttb: 'Oben→Unten', btt: 'Unten→Oben' },
+                wordsList: ["SONNE", "MOND", "WASSER", "HAUS", "STRASSE", "SAND", "AST", "DORF", "JUNGE", "HAND"]
+            }
         };
-    });
-}
 
-/* DRAW STAR */
-function drawStar(cx,cy,r,color='#000'){
-    const spikes=5,outer=r,inner=r*0.45;
-    let rot=Math.PI/2*3;
-    ctx.beginPath();
-    ctx.moveTo(cx,cy-outer);
-    for(let i=0;i<spikes;i++){
-        ctx.lineTo(cx+Math.cos(rot)*outer,cy+Math.sin(rot)*outer); rot+=Math.PI/spikes;
-        ctx.lineTo(cx+Math.cos(rot)*inner,cy+Math.sin(rot)*inner); rot+=Math.PI/spikes;
-    }
-    ctx.closePath();
-    ctx.fillStyle=color;
-    ctx.fill();
-}
+        let currentLang = 'en';
+        function applyLang(lang) {
+            currentLang = lang;
+            const t = LANG[lang];
+            document.getElementById('pageTitle').textContent = t.pageTitle;
+            document.getElementById('labelSmallStars').childNodes[0].textContent = t.labelSmallStars + ' ';
+            document.getElementById('labelLargeStars').childNodes[0].textContent = t.labelLargeStars + ' ';
+            document.getElementById('labelLetters').childNodes[0].textContent = t.labelLetters + ' ';
+            document.getElementById('labelWords').childNodes[0].textContent = t.labelWords + ' ';
+            document.getElementById('labelTimeout').textContent = t.labelTimeout;
+            document.getElementById('startBtn').textContent = t.startBtn;
+            document.getElementById('finishBtn').textContent = t.finishBtn;
+            document.getElementById('resetBtn').textContent = t.resetBtn;
+        }
 
-/* RENDER EVERYTHING */
-function render(){
-    ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR);
+        /* UTILS */
+        function setCanvasSize() {
+            const wrap = document.getElementById('canvasWrap');
+            const styleW = wrap.clientWidth, styleH = Math.round(window.innerHeight * 0.72);
+            DPR = window.devicePixelRatio || 1;
+            canvas.width = Math.floor(styleW * DPR);
+            canvas.height = Math.floor(styleH * DPR);
+            canvas.style.width = styleW + 'px';
+            canvas.style.height = styleH + 'px';
+            ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+            scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
+        }
+        function randBetween(a, b) { return a + (b - a) * rng(); }
+        function rectOverlap(a, b, pad = CONFIG.minGap * scaleFactor) {
+            return !(a.x + a.w + pad <= b.x - pad || a.x - pad >= b.x + b.w + pad || a.y + a.h + pad <= b.y - pad || a.y - pad >= b.y + b.h + pad);
+        }
+        function segLen(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+        function segIntersects(obj, x1, y1, x2, y2) {
+            // Check if either endpoint is inside
+            if (x1 >= obj.x && x1 <= obj.x + obj.w && y1 >= obj.y && y1 <= obj.y + obj.h) return true;
+            if (x2 >= obj.x && x2 <= obj.x + obj.w && y2 >= obj.y && y2 <= obj.y + obj.h) return true;
 
-    for(const o of objects){
-        const cx=o.x+o.w/2, cy=o.y+o.h/2;
+            // Check intersection with any of the 4 rectangle sides
+            const lineLine = (x3, y3, x4, y4) => {
+                const uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+                const uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+                return (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1);
+            };
 
-        if(o.type==='small'){
-            let color=o.demo?'#888':'#000';
+            const rw = obj.w, rh = obj.h;
+            const left = lineLine(obj.x, obj.y, obj.x, obj.y + rh);
+            const right = lineLine(obj.x + rw, obj.y, obj.x + rw, obj.y + rh);
+            const top = lineLine(obj.x, obj.y, obj.x + rw, obj.y);
+            const bottom = lineLine(obj.x, obj.y + rh, obj.x + rw, obj.y + rh);
 
-            if(testFinished){
-                if(o.cancelled){
-                    color='#000';
-                } else if(!o.demo){
-                    color='#d9534f';
+            return left || right || top || bottom;
+        }
+        function getCanvasPoint(e) {
+            const r = canvas.getBoundingClientRect();
+            return { x: e.clientX - r.left, y: e.clientY - r.top };
+        }
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60).toString().padStart(2, '0');
+            const s = (sec % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        /* PLACEMENT */
+        function placeObjects() {
+            CONFIG.smallStarsCount = parseInt(document.getElementById('smallStarsInput').value, 10);
+            CONFIG.largeStarsCount = parseInt(document.getElementById('largeStarsInput').value, 10);
+            CONFIG.lettersCount = parseInt(document.getElementById('lettersInput').value, 10);
+            CONFIG.wordsCount = parseInt(document.getElementById('wordsInput').value, 10);
+
+            objects = []; smallStars = [];
+            const W = canvas.width / DPR, H = canvas.height / DPR;
+
+            function tryPlace(w, h, areaX, areaW) {
+                for (let attempt = 0; attempt < CONFIG.MAX_PLACEMENT_ATTEMPTS; attempt++) {
+                    const x = randBetween(areaX, areaX + areaW - w), y = randBetween(0, H - h);
+                    const c = { x, y, w, h };
+                    let ok = true;
+                    for (const o of objects) {
+                        if (rectOverlap(c, o)) { ok = false; break; }
+                    }
+                    if (ok) return c;
+                }
+                return { x: randBetween(areaX, areaX + areaW - w), y: randBetween(0, H - h), w, h };
+            }
+
+            for (let i = 0; i < CONFIG.demoSmallStars; i++) {
+                const r = CONFIG.smallStarR * scaleFactor, w = r * 2, h = r * 2;
+                const pos = tryPlace(w, h, W / 2 - 20 * scaleFactor, 40 * scaleFactor);
+                const o = { id: `S${i + 1}`, type: 'small', x: pos.x, y: pos.y, w, h, r, demo: true, cancelled: false };
+                objects.push(o); smallStars.push(o);
+            }
+
+            const remaining = Math.max(0, CONFIG.smallStarsCount - CONFIG.demoSmallStars);
+            for (let i = 0; i < remaining; i++) {
+                const r = CONFIG.smallStarR * scaleFactor, w = r * 2, h = r * 2;
+                const areaX = i < remaining / 2 ? 0 : W / 2;
+                const pos = tryPlace(w, h, areaX, W / 2);
+                const o = { id: `S${i + 1 + CONFIG.demoSmallStars}`, type: 'small', x: pos.x, y: pos.y, w, h, r, demo: false, cancelled: false };
+                objects.push(o); smallStars.push(o);
+            }
+
+            const placeGeneric = (count, propsGen) => {
+                for (let i = 0; i < count; i++) {
+                    let o = null;
+                    for (let k = 0; k < CONFIG.MAX_PLACEMENT_ATTEMPTS; k++) {
+                        const pos = propsGen();
+                        o = { ...pos };
+                        let ok = true;
+                        for (const z of objects) {
+                            if (rectOverlap(o, z)) { ok = false; break; }
+                        }
+                        if (ok) break;
+                    }
+                    objects.push(o);
+                }
+            };
+
+            placeGeneric(CONFIG.largeStarsCount, () => ({
+                id: `L${Math.random()}`,
+                type: 'large',
+                r: CONFIG.largeStarR * scaleFactor,
+                w: CONFIG.largeStarR * 2 * scaleFactor,
+                h: CONFIG.largeStarR * 2 * scaleFactor,
+                x: randBetween(0, W - 40 * scaleFactor),
+                y: randBetween(0, H - 40 * scaleFactor)
+            }));
+
+            const letters = 'ABCDEFGHIJKLMNOPQRSTVYZ'.split('');
+            placeGeneric(CONFIG.lettersCount, () => {
+                const font = CONFIG.wordFont * scaleFactor;
+                const ch = letters[Math.floor(randBetween(0, letters.length))];
+                return {
+                    id: `T${Math.random()}`,
+                    type: 'letter',
+                    text: ch, font,
+                    w: font * 0.9, h: font * 1.2,
+                    x: randBetween(0, W - font),
+                    y: randBetween(0, H - font)
+                };
+            });
+
+            placeGeneric(CONFIG.wordsCount, () => {
+                const font = CONFIG.wordFont * scaleFactor;
+                const list = LANG[currentLang].wordsList;
+                const t = list[Math.floor(randBetween(0, list.length))];
+                const w = Math.max(20, t.length * font * 0.6), h = font * 1.2;
+                return {
+                    id: `W${Math.random()}`,
+                    type: 'word', text: t, font, w, h,
+                    x: randBetween(0, W - w),
+                    y: randBetween(0, H - h)
+                };
+            });
+        }
+
+        /* DRAW STAR */
+        function drawStar(cx, cy, r, color = '#000') {
+            const spikes = 5, outer = r, inner = r * 0.45;
+            let rot = Math.PI / 2 * 3;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outer);
+            for (let i = 0; i < spikes; i++) {
+                ctx.lineTo(cx + Math.cos(rot) * outer, cy + Math.sin(rot) * outer); rot += Math.PI / spikes;
+                ctx.lineTo(cx + Math.cos(rot) * inner, cy + Math.sin(rot) * inner); rot += Math.PI / spikes;
+            }
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        /* RENDER EVERYTHING */
+        function render() {
+            ctx.clearRect(0, 0, canvas.width / DPR, canvas.height / DPR);
+
+            for (const o of objects) {
+                const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+
+                if (o.type === 'small') {
+                    let color = o.demo ? '#888' : '#000';
+
+                    if (testFinished) {
+                        if (o.cancelled) {
+                            color = '#000';
+                        } else if (!o.demo) {
+                            color = '#d9534f';
+                        }
+                    }
+
+                    drawStar(cx, cy, o.r, color);
+
+                    if (o.demo) {
+                        ctx.strokeStyle = '#d9534f';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(o.x, o.y); ctx.lineTo(o.x + o.w, o.y + o.h);
+                        ctx.moveTo(o.x, o.y + o.h); ctx.lineTo(o.x + o.w, o.y);
+                        ctx.stroke();
+                    }
+
+                    if (testFinished && o.cancelled) {
+                        ctx.fillStyle = '#0066cc';
+                        ctx.font = `${22 * scaleFactor}px Arial`;
+                        ctx.fillText(o.id, o.x, Math.max(22, o.y - 6));
+                    }
+                }
+
+                else if (o.type === 'large') { drawStar(cx, cy, o.r, '#000'); }
+
+                else if (o.type === 'letter') {
+                    ctx.fillStyle = '#000';
+                    ctx.font = `${o.font}px Arial`;
+                    ctx.fillText(o.text, o.x, o.y + o.h * 0.85);
+                }
+
+                else if (o.type === 'word') {
+                    ctx.fillStyle = '#000';
+                    ctx.font = `${o.font}px Arial`;
+                    ctx.fillText(o.text, o.x, o.y + o.h * 0.85);
                 }
             }
 
-            drawStar(cx,cy,o.r,color);
-
-            if(o.demo){
-                ctx.strokeStyle='#d9534f';
-                ctx.lineWidth=2;
+            strokes.forEach((s, idx) => {
+                ctx.strokeStyle = testFinished
+                    ? (s.starIds.length > 0 ? '#2eb82e' : '#d9534f')
+                    : '#007acc';
+                ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(o.x,o.y); ctx.lineTo(o.x+o.w,o.y+o.h);
-                ctx.moveTo(o.x,o.y+o.h); ctx.lineTo(o.x+o.w,o.y);
+                ctx.moveTo(s.x1, s.y1);
+                ctx.lineTo(s.x2, s.y2);
+                ctx.stroke();
+
+                if (testFinished) {
+                    ctx.fillStyle = '#ff8800';
+                    ctx.font = `${16 * scaleFactor}px Arial`;
+                    ctx.fillText(idx + 1, s.x1 + 4, s.y1 - 4);
+                }
+            });
+
+            if (tempStroke) {
+                ctx.strokeStyle = '#007acc';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(tempStroke.x1, tempStroke.y1);
+                ctx.lineTo(tempStroke.x2, tempStroke.y2);
                 ctx.stroke();
             }
+        }
 
-            if(testFinished && o.cancelled){
-                ctx.fillStyle='#0066cc';
-                ctx.font=`${22*scaleFactor}px Arial`;
-                ctx.fillText(o.id, o.x, Math.max(22, o.y-6));
+        /* DIRECTION DETECTOR */
+        function computeDirection(x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const code = Math.abs(dx) > Math.abs(dy)
+                ? (dx > 0 ? 'ltr' : 'rtl')
+                : (dy > 0 ? 'ttb' : 'btt');
+            return { code, text: LANG[currentLang].dirStrings[code] };
+        }
+
+        /* POINTER EVENTS */
+        function pointerDown(e) {
+            if (!drawEnabled || testFinished) return;
+            e.preventDefault();
+            startPoint = getCanvasPoint(e);
+            isDrawing = true;
+            tempStroke = { x1: startPoint.x, y1: startPoint.y, x2: startPoint.x, y2: startPoint.y };
+            render();
+        }
+        function pointerMove(e) {
+            if (!drawEnabled || testFinished || !isDrawing) return;
+            e.preventDefault();
+            const p = getCanvasPoint(e);
+            tempStroke.x2 = p.x; tempStroke.y2 = p.y;
+            render();
+        }
+        function pointerUp(e) {
+            if (!drawEnabled || testFinished || !isDrawing) return;
+            e.preventDefault();
+            const end = getCanvasPoint(e);
+            isDrawing = false;
+
+            const len = segLen(startPoint.x, startPoint.y, end.x, end.y);
+            if (len < CONFIG.MIN_STROKE_LEN * scaleFactor || len > CONFIG.MAX_STROKE_LEN * scaleFactor) {
+                tempStroke = null; render(); return;
             }
+
+            let hits = [];
+            for (const s of smallStars) {
+                if (s.demo) continue;
+                if (segIntersects(s, startPoint.x, startPoint.y, end.x, end.y)) hits.push(s);
+            }
+
+            if (hits.length > 1) {
+                const sx = startPoint.x, sy = startPoint.y, ex = end.x, ey = end.y;
+                hits.sort((a, b) => {
+                    const ax = a.x + a.w / 2, ay = a.y + a.h / 2;
+                    const bx = b.x + b.w / 2, by = b.y + b.h / 2;
+                    const tA = ((ax - sx) * (ex - sx) + (ay - sy) * (ey - sy)) / (((ex - sx) ** 2 + (ey - sy) ** 2) || 1);
+                    const tB = ((bx - sx) * (ex - sx) + (by - sy) * (ey - sy)) / (((ex - sx) ** 2 + (ey - sy) ** 2) || 1);
+                    return tA - tB;
+                });
+            }
+
+            let hitIds = [];
+            for (const s of hits) {
+                if (!s.cancelled) {
+                    s.cancelled = true;
+                    starCancelOrder.push(s.id);
+                }
+                hitIds.push(s.id);
+            }
+
+            const dir = computeDirection(startPoint.x, startPoint.y, end.x, end.y);
+
+            strokes.push({
+                x1: startPoint.x, y1: startPoint.y,
+                x2: end.x, y2: end.y,
+                starIds: hitIds,
+                starCorrect: hitIds.length > 0,
+                directionCode: dir.code,
+                directionText: dir.text,
+                timestamp: Date.now()
+            });
+
+            tempStroke = null;
+            render();
         }
 
-        else if(o.type==='large'){ drawStar(cx,cy,o.r,'#000'); }
+        /* TIMER + TEST CONTROL */
+        function startTest() {
+            testStarted = true; testFinished = false;
+            strokes = []; starCancelOrder = [];
+            startTime = Date.now();
+            drawEnabled = true;
 
-        else if(o.type==='letter'){
-            ctx.fillStyle='#000';
-            ctx.font=`${o.font}px Arial`;
-            ctx.fillText(o.text,o.x,o.y+o.h*0.85);
-        }
+            // No zoom during test
+            document.addEventListener('touchstart', preventZoom, { passive: false });
 
-        else if(o.type==='word'){
-            ctx.fillStyle='#000';
-            ctx.font=`${o.font}px Arial`;
-            ctx.fillText(o.text,o.x,o.y+o.h*0.85);
-        }
-    }
+            setCanvasSize();
+            placeObjects();
+            render();
 
-    strokes.forEach((s,idx)=>{
-        ctx.strokeStyle = testFinished
-            ? (s.starIds.length>0 ? '#2eb82e' : '#d9534f')
-            : '#007acc';
-        ctx.lineWidth=3;
-        ctx.beginPath();
-        ctx.moveTo(s.x1,s.y1);
-        ctx.lineTo(s.x2,s.y2);
-        ctx.stroke();
+            document.getElementById('finishBtn').disabled = false;
+            document.getElementById('startBtn').disabled = true;
 
-        if(testFinished){
-            ctx.fillStyle='#ff8800';
-            ctx.font=`${16*scaleFactor}px Arial`;
-            ctx.fillText(idx+1, s.x1+4, s.y1-4);
-        }
-    });
-
-    if(tempStroke){
-        ctx.strokeStyle='#007acc';
-        ctx.lineWidth=2;
-        ctx.beginPath();
-        ctx.moveTo(tempStroke.x1,tempStroke.y1);
-        ctx.lineTo(tempStroke.x2,tempStroke.y2);
-        ctx.stroke();
-    }
-}
-
-/* DIRECTION DETECTOR */
-function computeDirection(x1,y1,x2,y2){
-    const dx=x2-x1, dy=y2-y1;
-    const code = Math.abs(dx)>Math.abs(dy)
-        ? (dx>0?'ltr':'rtl')
-        : (dy>0?'ttb':'btt');
-    return {code, text:LANG[currentLang].dirStrings[code]};
-}
-
-/* POINTER EVENTS */
-function pointerDown(e){
-    if(!drawEnabled||testFinished) return;
-    e.preventDefault();
-    startPoint=getCanvasPoint(e);
-    isDrawing=true;
-    tempStroke={x1:startPoint.x,y1:startPoint.y,x2:startPoint.x,y2:startPoint.y};
-    render();
-}
-function pointerMove(e){
-    if(!drawEnabled||testFinished||!isDrawing)return;
-    e.preventDefault();
-    const p=getCanvasPoint(e);
-    tempStroke.x2=p.x; tempStroke.y2=p.y;
-    render();
-}
-function pointerUp(e){
-    if(!drawEnabled||testFinished||!isDrawing)return;
-    e.preventDefault();
-    const end=getCanvasPoint(e);
-    isDrawing=false;
-
-    const len=segLen(startPoint.x,startPoint.y,end.x,end.y);
-    if(len<CONFIG.MIN_STROKE_LEN*scaleFactor || len>CONFIG.MAX_STROKE_LEN*scaleFactor){
-        tempStroke=null; render(); return;
-    }
-
-    let hits=[];
-    for(const s of smallStars){
-        if(s.demo) continue;
-        if(segIntersects(s,startPoint.x,startPoint.y,end.x,end.y)) hits.push(s);
-    }
-
-    if(hits.length>1){
-        const sx=startPoint.x, sy=startPoint.y, ex=end.x, ey=end.y;
-        hits.sort((a,b)=>{
-            const ax=a.x+a.w/2, ay=a.y+a.h/2;
-            const bx=b.x+b.w/2, by=b.y+b.h/2;
-            const tA=((ax-sx)*(ex-sx)+(ay-sy)*(ey-sy))/(((ex-sx)**2+(ey-sy)**2)||1);
-            const tB=((bx-sx)*(ex-sx)+(by-sy)*(ey-sy))/(((ex-sx)**2+(ey-sy)**2)||1);
-            return tA - tB;
-        });
-    }
-
-    let hitIds=[];
-    for(const s of hits){
-        if(!s.cancelled){
-            s.cancelled=true;
-            starCancelOrder.push(s.id);
-        }
-        hitIds.push(s.id);
-    }
-
-    const dir=computeDirection(startPoint.x,startPoint.y,end.x,end.y);
-
-    strokes.push({
-        x1:startPoint.x, y1:startPoint.y,
-        x2:end.x, y2:end.y,
-        starIds:hitIds,
-        starCorrect:hitIds.length>0,
-        directionCode:dir.code,
-        directionText:dir.text,
-        timestamp:Date.now()
-    });
-
-    tempStroke=null;
-    render();
-}
-
-/* TIMER + TEST CONTROL */
-function startTest(){
-    testStarted=true; testFinished=false;
-    strokes=[]; starCancelOrder=[];
-    startTime=Date.now();
-    drawEnabled=true;
-
-    // No zoom during test
-    document.addEventListener('touchstart', preventZoom, {passive: false});
-
-    setCanvasSize();
-    placeObjects();
-    render();
-
-    document.getElementById('finishBtn').disabled=false;
-    document.getElementById('startBtn').disabled=true;
-
-    let sec=parseInt(document.getElementById('timeoutMinutes').value,10)*60;
-    document.getElementById('timer').textContent='Time Left: '+formatTime(sec);
-    clearInterval(countdownInterval);
-
-    countdownInterval=setInterval(()=>{
-        sec--;
-        document.getElementById('timer').textContent='Time Left: '+formatTime(sec);
-        if(sec<=0){
+            let sec = parseInt(document.getElementById('timeoutMinutes').value, 10) * 60;
+            document.getElementById('timer').textContent = 'Time Left: ' + formatTime(sec);
             clearInterval(countdownInterval);
-            finishTest();
-            alert(LANG[currentLang].alertTime);
+
+            countdownInterval = setInterval(() => {
+                sec--;
+                document.getElementById('timer').textContent = 'Time Left: ' + formatTime(sec);
+                if (sec <= 0) {
+                    clearInterval(countdownInterval);
+                    finishTest();
+                    alert(LANG[currentLang].alertTime);
+                }
+            }, 1000);
         }
-    },1000);
-}
 
-function finishTest(){
-    if(!testStarted||testFinished) return;
-    testFinished=true;
-    drawEnabled=false;
-    clearInterval(countdownInterval);
-    document.getElementById('timer').textContent='Time Left: 00:00';
-    
-    // Restore Zoom
-    document.removeEventListener('touchstart', preventZoom);
+        function finishTest() {
+            if (!testStarted || testFinished) return;
+            testFinished = true;
+            drawEnabled = false;
+            clearInterval(countdownInterval);
+            document.getElementById('timer').textContent = 'Time Left: 00:00';
 
-    render();
-    computeStats();
+            // Restore Zoom
+            document.removeEventListener('touchstart', preventZoom);
 
-    document.getElementById('statsPanel').style.display='block';
-    document.getElementById('userForm').style.display='flex';
+            render();
+            computeStats();
 
-    document.getElementById('finishBtn').disabled=true;
-    document.getElementById('startBtn').disabled=false;
+            document.getElementById('statsPanel').style.display = 'block';
+            document.getElementById('userForm').style.display = 'flex';
 
-    fileCode=Math.floor(Math.random()*1e8).toString().padStart(8,'0');
-}
+            document.getElementById('finishBtn').disabled = true;
+            document.getElementById('startBtn').disabled = false;
 
-function resetTest(){
-    clearInterval(countdownInterval);
-    testStarted=false; testFinished=false;
-    strokes=[]; objects=[]; smallStars=[];
-    starCancelOrder=[];
-    drawEnabled=false;
+            fileCode = Math.floor(Math.random() * 1e8).toString().padStart(8, '0');
+        }
 
-    // Restore Zoom
-    document.removeEventListener('touchstart', preventZoom);
+        function resetTest() {
+            clearInterval(countdownInterval);
+            testStarted = false; testFinished = false;
+            strokes = []; objects = []; smallStars = [];
+            starCancelOrder = [];
+            drawEnabled = false;
 
-    document.getElementById('statsPanel').style.display='none';
-    document.getElementById('userForm').style.display='none';
-    document.getElementById('startBtn').disabled=false;
-    document.getElementById('finishBtn').disabled=true;
-    document.getElementById('timer').textContent='Time Left: --:--';
-    setCanvasSize();
-    render();
-}
+            // Restore Zoom
+            document.removeEventListener('touchstart', preventZoom);
 
-/* STATS */
-function computeStats(){
-    const scored = smallStars.filter(s=>!s.demo);
-    const cancelled = scored.filter(s=>s.cancelled).length;
-    const leftCancelled = scored.filter(s=>s.cancelled && (s.x+s.w/2) < (canvas.width/DPR)/2).length;
-    const rightCancelled = cancelled - leftCancelled;
+            document.getElementById('statsPanel').style.display = 'none';
+            document.getElementById('userForm').style.display = 'none';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('finishBtn').disabled = true;
+            document.getElementById('timer').textContent = 'Time Left: --:--';
+            setCanvasSize();
+            render();
+        }
 
-    const lateralityIndex = cancelled>0 ? leftCancelled/cancelled : 0;
-    let USN='None';
-    if(lateralityIndex<=0.46) USN='Left';
-    else if(lateralityIndex>=0.54) USN='Right';
+        /* STATS */
+        function computeStats() {
+            const scored = smallStars.filter(s => !s.demo);
+            const cancelled = scored.filter(s => s.cancelled).length;
+            const leftCancelled = scored.filter(s => s.cancelled && (s.x + s.w / 2) < (canvas.width / DPR) / 2).length;
+            const rightCancelled = cancelled - leftCancelled;
 
-    const duration = Math.round((Date.now()-startTime)/1000);
-    const avgTime = cancelled>0 ? (duration/cancelled).toFixed(2) : '—';
+            const lateralityIndex = cancelled > 0 ? leftCancelled / cancelled : 0;
+            let USN = 'None';
+            if (lateralityIndex <= 0.46) USN = 'Left';
+            else if (lateralityIndex >= 0.54) USN = 'Right';
 
-    const hitLines = strokes.filter(s=>s.starCorrect).length;
-    const missLines = strokes.length - hitLines;
+            const duration = Math.round((Date.now() - startTime) / 1000);
+            const avgTime = cancelled > 0 ? (duration / cancelled).toFixed(2) : '—';
 
-    stats={
-        totalSmall:smallStars.length,
-        demoCount:smallStars.filter(s=>s.demo).length,
-        maxScore:scored.length,
-        cancelled,
-        cancelledLeft:leftCancelled,
-        cancelledRight:rightCancelled,
-        lateralityIndex,
-        USN,
-        durationSeconds:duration,
-        avgTime,
-        hitLines,
-        missLines
-    };
+            const hitLines = strokes.filter(s => s.starCorrect).length;
+            const missLines = strokes.length - hitLines;
 
-    const r=LANG[currentLang].results;
+            stats = {
+                totalSmall: smallStars.length,
+                demoCount: smallStars.filter(s => s.demo).length,
+                maxScore: scored.length,
+                cancelled,
+                cancelledLeft: leftCancelled,
+                cancelledRight: rightCancelled,
+                lateralityIndex,
+                USN,
+                durationSeconds: duration,
+                avgTime,
+                hitLines,
+                missLines
+            };
 
-    let html=`<strong>${r.title}</strong><br>
+            const r = LANG[currentLang].results;
+
+            let html = `<strong>${r.title}</strong><br>
         ${r.cancelled}: ${cancelled}/${scored.length}<br>
         ${r.left}: ${leftCancelled} | ${r.right}: ${rightCancelled}<br>
         ${r.laterality}: ${lateralityIndex.toFixed(2)}<br>
@@ -673,237 +820,242 @@ function computeStats(){
         ${r.hitLines}: ${hitLines}<br>
         ${r.missLines}: ${missLines}<br>`;
 
-    html+=`<div class="starOrder"><strong>${r.orderTitle}:</strong> `;
-    html+=starCancelOrder.length ? starCancelOrder.join(' → ') : '—';
-    html+=`</div>`;
+            html += `<div class="starOrder"><strong>${r.orderTitle}:</strong> `;
+            html += starCancelOrder.length ? starCancelOrder.join(' → ') : '—';
+            html += `</div>`;
 
-    const headers=r.strokeTableHeaders;
-    html+=`<div style="overflow:auto"><table><thead><tr>`;
-    headers.forEach(h=>html+=`<th>${h}</th>`);
-    html+=`</tr></thead><tbody>`;
+            const headers = r.strokeTableHeaders;
+            html += `<div style="overflow:auto"><table><thead><tr>`;
+            headers.forEach(h => html += `<th>${h}</th>`);
+            html += `</tr></thead><tbody>`;
 
-    strokes.forEach((s,i)=>{
-        html+=`<tr>
-        <td>${i+1}</td>
+            strokes.forEach((s, i) => {
+                html += `<tr>
+        <td>${i + 1}</td>
         <td>${s.starIds.join('|')}</td>
         <td>${Math.round(s.x1)}</td>
         <td>${Math.round(s.y1)}</td>
         <td>${Math.round(s.x2)}</td>
         <td>${Math.round(s.y2)}</td>
         <td>${s.directionText}</td>
-        <td>${s.starCorrect?'True':'False'}</td>
+        <td>${s.starCorrect ? 'True' : 'False'}</td>
         </tr>`;
-    });
+            });
 
-    html+=`</tbody></table></div>`;
+            html += `</tbody></table></div>`;
 
-    document.getElementById('finalStats').innerHTML=html;
-}
-
-/* CSV EXPORT */
-function csvSafe(v){
-    if(v===undefined||v===null) return '';
-    const s=String(v);
-    if(/[,"\n\r]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
-    return s;
-}
-
-function downloadCSV(){
-    const name=document.getElementById('name').value.trim();
-    const surname=document.getElementById('surname').value.trim();
-    const age=document.getElementById('age').value.trim();
-    if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
-
-    const c=LANG[currentLang].csv;
-    let rows=[];
-
-    rows.push([c.name,name]);
-    rows.push([c.surname,surname]);
-    rows.push([c.age,age]);
-    rows.push([]);
-    rows.push([c.totalSmall,stats.totalSmall]);
-    rows.push([c.demoCount,stats.demoCount]);
-    rows.push([c.maxScore,stats.maxScore]);
-    rows.push([c.cancelled,stats.cancelled]);
-    rows.push([c.left,stats.cancelledLeft]);
-    rows.push([c.right,stats.cancelledRight]);
-    rows.push([c.laterality,stats.lateralityIndex]);
-    rows.push([c.USN,stats.USN]);
-    rows.push([c.duration,stats.durationSeconds]);
-    rows.push([c.avg,stats.avgTime]);
-    rows.push([c.hitLines,stats.hitLines]);
-    rows.push([c.missLines,stats.missLines]);
-    rows.push([]);
-    rows.push([c.strokes]);
-    rows.push(c.strokeCols);
-
-    strokes.forEach((s,i)=>{
-        rows.push([
-            i+1,
-            s.starIds.join('|'),
-            Math.round(s.x1),
-            Math.round(s.y1),
-            Math.round(s.x2),
-            Math.round(s.y2),
-            s.directionText,
-            s.starCorrect?'True':'False'
-        ]);
-    });
-
-    rows.push([]);
-    const orderHeader=LANG[currentLang].results.orderTitle;
-    rows.push([orderHeader, starCancelOrder.join(' → ')]);
-
-    const csv='\uFEFF' + rows.map(r=>r.map(csvSafe).join(',')).join('\r\n');
-
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download=`${fileCode}_${name}_${surname}_${age}.csv`;
-    a.click();
-}
-
-/* PNG EXPORT */
-function downloadPNG(){
-    const name=document.getElementById('name').value.trim();
-    const surname=document.getElementById('surname').value.trim();
-    const age=document.getElementById('age').value.trim();
-    if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
-
-    const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = canvas.width;
-    exportCanvas.height = canvas.height;
-
-    const ex = exportCanvas.getContext("2d");
-    ex.fillStyle = "#ffffff";
-    ex.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-    ex.drawImage(canvas, 0, 0);
-
-    exportCanvas.toBlob(b=>{
-        const url=URL.createObjectURL(b);
-        const a=document.createElement('a');
-        a.href=url;
-        a.download=`${fileCode}_${name}_${surname}_${age}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-    });
-}
-
-/* PATTERN PNG EXPORT WITH GREEN/RED STROKES + ARROWS */
-function downloadPatternPNG(){
-    const name=document.getElementById('name').value.trim();
-    const surname=document.getElementById('surname').value.trim();
-    const age=document.getElementById('age').value.trim();
-    if(!name||!surname||!age){alert(LANG[currentLang].alertFill);return;}
-
-    const patternCanvas=document.createElement("canvas");
-    patternCanvas.width=canvas.width;
-    patternCanvas.height=canvas.height;
-    const pctx=patternCanvas.getContext("2d");
-
-    // White background
-    pctx.fillStyle="#ffffff";
-    pctx.fillRect(0,0,patternCanvas.width,patternCanvas.height);
-
-    // Faint stars for context
-    pctx.globalAlpha=0.15;
-    smallStars.forEach(s=>{
-        const cx=s.x+s.w/2;
-        const cy=s.y+s.h/2;
-        pctx.beginPath();
-        pctx.arc(cx*DPR,cy*DPR,6*DPR,0,Math.PI*2);
-        pctx.fillStyle="#000000";
-        pctx.fill();
-    });
-    pctx.globalAlpha=1;
-
-    // Draw strokes with green/red logic
-    pctx.lineCap="round";
-    strokes.forEach((s,i)=>{
-        pctx.lineWidth=3*DPR;
-        pctx.strokeStyle = s.starCorrect ? "#2eb82e" : "#d9534f";
-
-        pctx.beginPath();
-        pctx.moveTo(s.x1*DPR,s.y1*DPR);
-        pctx.lineTo(s.x2*DPR,s.y2*DPR);
-        pctx.stroke();
-
-        // Stroke number label (orange like main canvas)
-        pctx.fillStyle="#ff8800";
-        pctx.font=`${18*DPR}px Arial`;
-        pctx.fillText(i+1,s.x1*DPR+6,s.y1*DPR-6);
-    });
-
-    // Compute midpoints
-    const midpoints=strokes.map(s=>{
-        const mx=(s.x1+s.x2)/2*DPR;
-        const my=(s.y1+s.y2)/2*DPR;
-        return {mx,my};
-    });
-
-    // Arrow helper
-    function drawArrow(ctx,x1,y1,x2,y2){
-        const head=12*DPR;
-        const a=Math.atan2(y2-y1,x2-x1);
-
-        ctx.beginPath();
-        ctx.moveTo(x1,y1);
-        ctx.lineTo(x2,y2);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(x2,y2);
-        ctx.lineTo(x2-head*Math.cos(a-Math.PI/6), y2-head*Math.sin(a-Math.PI/6));
-        ctx.lineTo(x2-head*Math.cos(a+Math.PI/6), y2-head*Math.sin(a+Math.PI/6));
-        ctx.closePath();
-        ctx.fill();
-    }
-
-    // Arrows between midpoint sequence
-    if(midpoints.length>1){
-        pctx.strokeStyle="#555";
-        pctx.fillStyle="#555";
-        pctx.lineWidth=2*DPR;
-
-        for(let i=0;i<midpoints.length-1;i++){
-            const p1=midpoints[i];
-            const p2=midpoints[i+1];
-            drawArrow(pctx,p1.mx,p1.my,p2.mx,p2.my);
+            document.getElementById('finalStats').innerHTML = html;
         }
-    }
 
-    // Save PNG
-    patternCanvas.toBlob(b=>{
-        const url=URL.createObjectURL(b);
-        const a=document.createElement('a');
-        a.href=url;
-        a.download=`${fileCode}_${name}_${surname}_${age}_pattern.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-    });
-}
+        /* CSV EXPORT */
+        function csvSafe(v) {
+            if (v === undefined || v === null) return '';
+            const s = String(v);
+            if (/[,"\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+            return s;
+        }
 
-/* EVENT BINDINGS */
-document.getElementById('startBtn').addEventListener('click',startTest);
-document.getElementById('finishBtn').addEventListener('click',finishTest);
-document.getElementById('resetBtn').addEventListener('click',resetTest);
-document.getElementById('downloadCsv').addEventListener('click',downloadCSV);
-document.getElementById('downloadPng').addEventListener('click',downloadPNG);
-document.getElementById('downloadPatternPng').addEventListener('click',downloadPatternPNG);
+        function downloadCSV() {
+            const name = document.getElementById('name').value.trim();
+            const surname = document.getElementById('surname').value.trim();
+            const age = document.getElementById('age').value.trim();
+            if (!name || !surname || !age) { alert(LANG[currentLang].alertFill); return; }
 
-canvas.addEventListener('pointerdown',pointerDown);
-canvas.addEventListener('pointermove',pointerMove);
-canvas.addEventListener('pointerup',pointerUp);
-canvas.addEventListener('pointercancel',pointerUp);
-canvas.addEventListener('pointerleave',()=>{if(isDrawing){isDrawing=false;tempStroke=null;render();}});
+            const c = LANG[currentLang].csv;
+            let rows = [];
 
-document.querySelectorAll('#languageButtons button')
-    .forEach(b=>b.addEventListener('click',()=>applyLang(b.dataset.lang)));
+            rows.push([c.name, name]);
+            rows.push([c.surname, surname]);
+            rows.push([c.age, age]);
+            rows.push([]);
+            rows.push([c.totalSmall, stats.totalSmall]);
+            rows.push([c.demoCount, stats.demoCount]);
+            rows.push([c.maxScore, stats.maxScore]);
+            rows.push([c.cancelled, stats.cancelled]);
+            rows.push([c.left, stats.cancelledLeft]);
+            rows.push([c.right, stats.cancelledRight]);
+            rows.push([c.laterality, stats.lateralityIndex]);
+            rows.push([c.USN, stats.USN]);
+            rows.push([c.duration, stats.durationSeconds]);
+            rows.push([c.avg, stats.avgTime]);
+            rows.push([c.hitLines, stats.hitLines]);
+            rows.push([c.missLines, stats.missLines]);
+            rows.push([]);
+            rows.push([c.strokes]);
+            rows.push(c.strokeCols);
 
-setCanvasSize(); render();
-window.addEventListener('resize',()=>{ setCanvasSize(); render(); });
-applyLang('en');
-</script>
+            strokes.forEach((s, i) => {
+                rows.push([
+                    i + 1,
+                    s.starIds.join('|'),
+                    Math.round(s.x1),
+                    Math.round(s.y1),
+                    Math.round(s.x2),
+                    Math.round(s.y2),
+                    s.directionText,
+                    s.starCorrect ? 'True' : 'False'
+                ]);
+            });
+
+            rows.push([]);
+            const orderHeader = LANG[currentLang].results.orderTitle;
+            rows.push([orderHeader, starCancelOrder.join(' → ')]);
+
+            const csv = '\uFEFF' + rows.map(r => r.map(csvSafe).join(',')).join('\r\n');
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${fileCode}_${name}_${surname}_${age}.csv`;
+            a.click();
+        }
+
+        /* PNG EXPORT */
+        function downloadPNG() {
+            const name = document.getElementById('name').value.trim();
+            const surname = document.getElementById('surname').value.trim();
+            const age = document.getElementById('age').value.trim();
+            if (!name || !surname || !age) { alert(LANG[currentLang].alertFill); return; }
+
+            const exportCanvas = document.createElement("canvas");
+            exportCanvas.width = canvas.width;
+            exportCanvas.height = canvas.height;
+
+            const ex = exportCanvas.getContext("2d");
+            ex.fillStyle = "#ffffff";
+            ex.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+            ex.drawImage(canvas, 0, 0);
+
+            exportCanvas.toBlob(b => {
+                const url = URL.createObjectURL(b);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fileCode}_${name}_${surname}_${age}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        /* PATTERN PNG EXPORT WITH GREEN/RED STROKES + ARROWS */
+        function downloadPatternPNG() {
+            const name = document.getElementById('name').value.trim();
+            const surname = document.getElementById('surname').value.trim();
+            const age = document.getElementById('age').value.trim();
+            if (!name || !surname || !age) { alert(LANG[currentLang].alertFill); return; }
+
+            const patternCanvas = document.createElement("canvas");
+            patternCanvas.width = canvas.width;
+            patternCanvas.height = canvas.height;
+            const pctx = patternCanvas.getContext("2d");
+
+            // White background
+            pctx.fillStyle = "#ffffff";
+            pctx.fillRect(0, 0, patternCanvas.width, patternCanvas.height);
+
+            // Faint stars for context
+            pctx.globalAlpha = 0.15;
+            smallStars.forEach(s => {
+                const cx = s.x + s.w / 2;
+                const cy = s.y + s.h / 2;
+                pctx.beginPath();
+                pctx.arc(cx * DPR, cy * DPR, 6 * DPR, 0, Math.PI * 2);
+                pctx.fillStyle = "#000000";
+                pctx.fill();
+            });
+            pctx.globalAlpha = 1;
+
+            // Draw strokes with green/red logic
+            pctx.lineCap = "round";
+            strokes.forEach((s, i) => {
+                pctx.lineWidth = 3 * DPR;
+                pctx.strokeStyle = s.starCorrect ? "#2eb82e" : "#d9534f";
+
+                pctx.beginPath();
+                pctx.moveTo(s.x1 * DPR, s.y1 * DPR);
+                pctx.lineTo(s.x2 * DPR, s.y2 * DPR);
+                pctx.stroke();
+
+                // Stroke number label (orange like main canvas)
+                pctx.fillStyle = "#ff8800";
+                pctx.font = `${18 * DPR}px Arial`;
+                pctx.fillText(i + 1, s.x1 * DPR + 6, s.y1 * DPR - 6);
+            });
+
+            // Compute midpoints
+            const midpoints = strokes.map(s => {
+                const mx = (s.x1 + s.x2) / 2 * DPR;
+                const my = (s.y1 + s.y2) / 2 * DPR;
+                return { mx, my };
+            });
+
+            // Arrow helper
+            function drawArrow(ctx, x1, y1, x2, y2) {
+                const head = 12 * DPR;
+                const a = Math.atan2(y2 - y1, x2 - x1);
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(x2 - head * Math.cos(a - Math.PI / 6), y2 - head * Math.sin(a - Math.PI / 6));
+                ctx.lineTo(x2 - head * Math.cos(a + Math.PI / 6), y2 - head * Math.sin(a + Math.PI / 6));
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Arrows between midpoint sequence
+            if (midpoints.length > 1) {
+                pctx.strokeStyle = "#555";
+                pctx.fillStyle = "#555";
+                pctx.lineWidth = 2 * DPR;
+
+                for (let i = 0; i < midpoints.length - 1; i++) {
+                    const p1 = midpoints[i];
+                    const p2 = midpoints[i + 1];
+                    drawArrow(pctx, p1.mx, p1.my, p2.mx, p2.my);
+                }
+            }
+
+            // Save PNG
+            patternCanvas.toBlob(b => {
+                const url = URL.createObjectURL(b);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${fileCode}_${name}_${surname}_${age}_pattern.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        /* EVENT BINDINGS */
+        document.getElementById('startBtn').addEventListener('click', startTest);
+        document.getElementById('finishBtn').addEventListener('click', finishTest);
+        document.getElementById('resetBtn').addEventListener('click', resetTest);
+        document.getElementById('downloadCsv').addEventListener('click', downloadCSV);
+        document.getElementById('downloadPng').addEventListener('click', downloadPNG);
+        document.getElementById('downloadPatternPng').addEventListener('click', downloadPatternPNG);
+
+        canvas.addEventListener('pointerdown', pointerDown);
+        canvas.addEventListener('pointermove', pointerMove);
+        canvas.addEventListener('pointerup', pointerUp);
+        canvas.addEventListener('pointercancel', pointerUp);
+        canvas.addEventListener('pointerleave', () => { if (isDrawing) { isDrawing = false; tempStroke = null; render(); } });
+
+        document.querySelectorAll('#languageButtons button')
+            .forEach(b => b.addEventListener('click', () => applyLang(b.dataset.lang)));
+
+        setCanvasSize(); render();
+        window.addEventListener('resize', () => {
+            if (!testStarted) {
+                setCanvasSize();
+                render();
+            }
+        });
+        applyLang('en');
+    </script>
 </body>
-</html>
 
+</html>
