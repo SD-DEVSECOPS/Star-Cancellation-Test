@@ -88,6 +88,12 @@
             cursor: not-allowed;
         }
 
+        input:disabled,
+        select:disabled {
+            background: #eee;
+            color: #888;
+        }
+
         #canvasWrap {
             width: 100%;
             max-width: 1100px;
@@ -181,13 +187,10 @@
 
 <body>
     <h1 id="pageTitle">Star Cancellation Test</h1>
-
-    <!-- Fix #6: Demo Note -->
     <div style="text-align:center; font-size:13px; color:#c00; margin-bottom:5px;" id="demoNote">
         (Stars with red lines are examples; do not cancel them)
     </div>
 
-    <!-- Fix #5: Wrapped labels in spans for robust updating -->
     <div class="settings">
         <label id="labelSmallStars"><span>Small stars (50-80):</span> <input id="smallStarsInput" type="number"
                 value="56"></label>
@@ -400,7 +403,6 @@
             document.getElementById('pageTitle').textContent = t.pageTitle;
             if (document.getElementById('demoNote')) document.getElementById('demoNote').textContent = t.demoNote;
 
-            // Fix #5: Use span targeting
             document.querySelector('#labelSmallStars span').textContent = t.labelSmallStars + ' ';
             document.querySelector('#labelLargeStars span').textContent = t.labelLargeStars + ' ';
             document.querySelector('#labelLetters span').textContent = t.labelLetters + ' ';
@@ -422,13 +424,18 @@
             canvas.style.width = styleW + 'px';
             canvas.style.height = styleH + 'px';
             ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-            scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
+            scaleFactor = styleW < 600 ? 0.5 : 1;
         }
 
-        // Fix #4: Helper functions
         function safeFilePart(s) {
             return (s || "").replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 40);
         }
+
+        function setSettingsDisabled(disabled) {
+            ['smallStarsInput', 'largeStarsInput', 'lettersInput', 'wordsInput', 'timeoutMinutes']
+                .forEach(id => document.getElementById(id).disabled = disabled);
+        }
+
         function setLangButtonsDisabled(disabled) {
             const btns = document.querySelectorAll('#languageButtons button');
             btns.forEach(b => b.disabled = disabled);
@@ -440,29 +447,24 @@
         }
         function segLen(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
         function segIntersects(obj, x1, y1, x2, y2) {
-            // Check if either endpoint is inside
             if (x1 >= obj.x && x1 <= obj.x + obj.w && y1 >= obj.y && y1 <= obj.y + obj.h) return true;
             if (x2 >= obj.x && x2 <= obj.x + obj.w && y2 >= obj.y && y2 <= obj.y + obj.h) return true;
 
-            // Check intersection with any of the 4 rectangle sides
             const lineLine = (x3, y3, x4, y4) => {
-                // Fix #1: Guard divide by zero
                 const denom = ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
                 if (Math.abs(denom) < 1e-9) return false;
-
                 const uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
                 const uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
                 return (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1);
             };
 
             const rw = obj.w, rh = obj.h;
-            const left = lineLine(obj.x, obj.y, obj.x, obj.y + rh);
-            const right = lineLine(obj.x + rw, obj.y, obj.x + rw, obj.y + rh);
-            const top = lineLine(obj.x, obj.y, obj.x + rw, obj.y);
-            const bottom = lineLine(obj.x, obj.y + rh, obj.x + rw, obj.y + rh);
-
-            return left || right || top || bottom;
+            return lineLine(obj.x, obj.y, obj.x, obj.y + rh) ||
+                lineLine(obj.x + rw, obj.y, obj.x + rw, obj.y + rh) ||
+                lineLine(obj.x, obj.y, obj.x + rw, obj.y) ||
+                lineLine(obj.x, obj.y + rh, obj.x + rw, obj.y + rh);
         }
+
         function getCanvasPoint(e) {
             const r = canvas.getBoundingClientRect();
             return { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -590,20 +592,14 @@
 
                 if (o.type === 'small') {
                     let color = o.demo ? '#888' : '#000';
-
                     if (testFinished) {
-                        if (o.cancelled) {
-                            color = '#000';
-                        } else if (!o.demo) {
-                            color = '#d9534f';
-                        }
+                        if (o.cancelled) color = '#000';
+                        else if (!o.demo) color = '#d9534f';
                     }
-
                     drawStar(cx, cy, o.r, color);
 
                     if (o.demo) {
-                        ctx.strokeStyle = '#d9534f';
-                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = '#d9534f'; ctx.lineWidth = 2;
                         ctx.beginPath();
                         ctx.moveTo(o.x, o.y); ctx.lineTo(o.x + o.w, o.y + o.h);
                         ctx.moveTo(o.x, o.y + o.h); ctx.lineTo(o.x + o.w, o.y);
@@ -616,59 +612,39 @@
                         ctx.fillText(o.id, o.x, Math.max(22, o.y - 6));
                     }
                 }
-
                 else if (o.type === 'large') { drawStar(cx, cy, o.r, '#000'); }
-
                 else if (o.type === 'letter') {
-                    ctx.fillStyle = '#000';
-                    ctx.font = `${o.font}px Arial`;
+                    ctx.fillStyle = '#000'; ctx.font = `${o.font}px Arial`;
                     ctx.fillText(o.text, o.x, o.y + o.h * 0.85);
                 }
-
                 else if (o.type === 'word') {
-                    ctx.fillStyle = '#000';
-                    ctx.font = `${o.font}px Arial`;
+                    ctx.fillStyle = '#000'; ctx.font = `${o.font}px Arial`;
                     ctx.fillText(o.text, o.x, o.y + o.h * 0.85);
                 }
             }
 
             strokes.forEach((s, idx) => {
-                ctx.strokeStyle = testFinished
-                    ? (s.starIds.length > 0 ? '#2eb82e' : '#d9534f')
-                    : '#007acc';
+                ctx.strokeStyle = testFinished ? (s.starIds.length > 0 ? '#2eb82e' : '#d9534f') : '#007acc';
                 ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(s.x1, s.y1);
-                ctx.lineTo(s.x2, s.y2);
-                ctx.stroke();
-
+                ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
                 if (testFinished) {
-                    ctx.fillStyle = '#ff8800';
-                    ctx.font = `${16 * scaleFactor}px Arial`;
+                    ctx.fillStyle = '#ff8800'; ctx.font = `${16 * scaleFactor}px Arial`;
                     ctx.fillText(idx + 1, s.x1 + 4, s.y1 - 4);
                 }
             });
 
             if (tempStroke) {
-                ctx.strokeStyle = '#007acc';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(tempStroke.x1, tempStroke.y1);
-                ctx.lineTo(tempStroke.x2, tempStroke.y2);
-                ctx.stroke();
+                ctx.strokeStyle = '#007acc'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(tempStroke.x1, tempStroke.y1); ctx.lineTo(tempStroke.x2, tempStroke.y2); ctx.stroke();
             }
         }
 
-        /* DIRECTION DETECTOR */
         function computeDirection(x1, y1, x2, y2) {
             const dx = x2 - x1, dy = y2 - y1;
-            const code = Math.abs(dx) > Math.abs(dy)
-                ? (dx > 0 ? 'ltr' : 'rtl')
-                : (dy > 0 ? 'ttb' : 'btt');
+            const code = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'ltr' : 'rtl') : (dy > 0 ? 'ttb' : 'btt');
             return { code, text: LANG[currentLang].dirStrings[code] };
         }
 
-        /* POINTER EVENTS */
         function pointerDown(e) {
             if (!drawEnabled || testFinished) return;
             e.preventDefault();
@@ -689,7 +665,6 @@
             e.preventDefault();
             const end = getCanvasPoint(e);
             isDrawing = false;
-
             const len = segLen(startPoint.x, startPoint.y, end.x, end.y);
             if (len < CONFIG.MIN_STROKE_LEN * scaleFactor || len > CONFIG.MAX_STROKE_LEN * scaleFactor) {
                 tempStroke = null; render(); return;
@@ -700,7 +675,6 @@
                 if (s.demo) continue;
                 if (segIntersects(s, startPoint.x, startPoint.y, end.x, end.y)) hits.push(s);
             }
-
             if (hits.length > 1) {
                 const sx = startPoint.x, sy = startPoint.y, ex = end.x, ey = end.y;
                 hits.sort((a, b) => {
@@ -714,45 +688,30 @@
 
             let hitIds = [];
             for (const s of hits) {
-                if (!s.cancelled) {
-                    s.cancelled = true;
-                    starCancelOrder.push(s.id);
-                }
+                if (!s.cancelled) { s.cancelled = true; starCancelOrder.push(s.id); }
                 hitIds.push(s.id);
             }
 
             const dir = computeDirection(startPoint.x, startPoint.y, end.x, end.y);
-
             strokes.push({
-                x1: startPoint.x, y1: startPoint.y,
-                x2: end.x, y2: end.y,
-                starIds: hitIds,
-                starCorrect: hitIds.length > 0,
-                directionCode: dir.code,
-                directionText: dir.text,
-                timestamp: Date.now()
+                x1: startPoint.x, y1: startPoint.y, x2: end.x, y2: end.y,
+                starIds: hitIds, starCorrect: hitIds.length > 0,
+                directionCode: dir.code, directionText: dir.text, timestamp: Date.now()
             });
-
-            tempStroke = null;
-            render();
+            tempStroke = null; render();
         }
 
-        /* TIMER + TEST CONTROL */
         function startTest() {
             testStarted = true; testFinished = false;
             strokes = []; starCancelOrder = [];
             startTime = Date.now();
             drawEnabled = true;
 
-            // No zoom during test
             document.addEventListener('touchstart', preventZoom, { passive: false });
-
-            // Fix #3: Language locking
             setLangButtonsDisabled(true);
+            setSettingsDisabled(true);
 
-            setCanvasSize();
-            placeObjects();
-            render();
+            setCanvasSize(); placeObjects(); render();
 
             document.getElementById('finishBtn').disabled = false;
             document.getElementById('startBtn').disabled = true;
@@ -760,7 +719,6 @@
             let sec = parseInt(document.getElementById('timeoutMinutes').value, 10) * 60;
             document.getElementById('timer').textContent = 'Time Left: ' + formatTime(sec);
             clearInterval(countdownInterval);
-
             countdownInterval = setInterval(() => {
                 sec--;
                 document.getElementById('timer').textContent = 'Time Left: ' + formatTime(sec);
@@ -778,20 +736,16 @@
             drawEnabled = false;
             clearInterval(countdownInterval);
             document.getElementById('timer').textContent = 'Time Left: 00:00';
-
-            // Restore Zoom
             document.removeEventListener('touchstart', preventZoom);
 
-            render();
-            computeStats();
+            render(); computeStats();
 
             document.getElementById('statsPanel').style.display = 'block';
             document.getElementById('userForm').style.display = 'flex';
-
             document.getElementById('finishBtn').disabled = true;
             document.getElementById('startBtn').disabled = false;
-
             setLangButtonsDisabled(false);
+            setSettingsDisabled(false);
 
             fileCode = Math.floor(Math.random() * 1e8).toString().padStart(8, '0');
         }
@@ -799,11 +753,8 @@
         function resetTest() {
             clearInterval(countdownInterval);
             testStarted = false; testFinished = false;
-            strokes = []; objects = []; smallStars = [];
-            starCancelOrder = [];
+            strokes = []; objects = []; smallStars = []; starCancelOrder = [];
             drawEnabled = false;
-
-            // Restore Zoom
             document.removeEventListener('touchstart', preventZoom);
 
             document.getElementById('statsPanel').style.display = 'none';
@@ -811,85 +762,54 @@
             document.getElementById('startBtn').disabled = false;
             document.getElementById('finishBtn').disabled = true;
             setLangButtonsDisabled(false);
+            setSettingsDisabled(false);
 
             document.getElementById('timer').textContent = 'Time Left: --:--';
-            setCanvasSize();
-            render();
+            setCanvasSize(); render();
         }
 
-        /* STATS */
         function computeStats() {
             const scored = smallStars.filter(s => !s.demo);
             const cancelled = scored.filter(s => s.cancelled).length;
             const leftCancelled = scored.filter(s => s.cancelled && (s.x + s.w / 2) < (canvas.width / DPR) / 2).length;
             const rightCancelled = cancelled - leftCancelled;
-
             const lateralityIndex = cancelled > 0 ? leftCancelled / cancelled : 0;
             let USN = 'None';
-            if (lateralityIndex <= 0.46) USN = 'Left';
-            else if (lateralityIndex >= 0.54) USN = 'Right';
+            if (lateralityIndex <= 0.46) USN = 'Left'; else if (lateralityIndex >= 0.54) USN = 'Right';
 
             const duration = Math.round((Date.now() - startTime) / 1000);
             const avgTime = cancelled > 0 ? (duration / cancelled).toFixed(2) : '—';
-
             const hitLines = strokes.filter(s => s.starCorrect).length;
             const missLines = strokes.length - hitLines;
 
             stats = {
-                totalSmall: smallStars.length,
-                demoCount: smallStars.filter(s => s.demo).length,
-                maxScore: scored.length,
-                cancelled,
-                cancelledLeft: leftCancelled,
-                cancelledRight: rightCancelled,
-                lateralityIndex,
-                USN,
-                durationSeconds: duration,
-                avgTime,
-                hitLines,
-                missLines
+                totalSmall: smallStars.length, demoCount: smallStars.filter(s => s.demo).length,
+                maxScore: scored.length, cancelled, cancelledLeft: leftCancelled, cancelledRight: rightCancelled,
+                lateralityIndex, USN, durationSeconds: duration, avgTime, hitLines, missLines
             };
 
             const r = LANG[currentLang].results;
-
             let html = `<strong>${r.title}</strong><br>
-        ${r.cancelled}: ${cancelled}/${scored.length}<br>
-        ${r.left}: ${leftCancelled} | ${r.right}: ${rightCancelled}<br>
-        ${r.laterality}: ${lateralityIndex.toFixed(2)}<br>
-        ${r.USN}: ${USN}<br>
-        ${r.duration}: ${duration}s<br>
-        ${r.avgtime}: ${avgTime}s<br>
-        ${r.hitLines}: ${hitLines}<br>
-        ${r.missLines}: ${missLines}<br>`;
+                ${r.cancelled}: ${cancelled}/${scored.length}<br>
+                ${r.left}: ${leftCancelled} | ${r.right}: ${rightCancelled}<br>
+                ${r.laterality}: ${lateralityIndex.toFixed(2)}<br>
+                ${r.USN}: ${USN}<br>
+                ${r.duration}: ${duration}s<br>
+                ${r.avgtime}: ${avgTime}s<br>
+                ${r.hitLines}: ${hitLines}<br>
+                ${r.missLines}: ${missLines}<br>`;
 
-            html += `<div class="starOrder"><strong>${r.orderTitle}:</strong> `;
-            html += starCancelOrder.length ? starCancelOrder.join(' → ') : '—';
-            html += `</div>`;
-
-            const headers = r.strokeTableHeaders;
+            html += `<div class="starOrder"><strong>${r.orderTitle}:</strong> ` + (starCancelOrder.length ? starCancelOrder.join(' → ') : '—') + `</div>`;
             html += `<div style="overflow:auto"><table><thead><tr>`;
-            headers.forEach(h => html += `<th>${h}</th>`);
+            r.strokeTableHeaders.forEach(h => html += `<th>${h}</th>`);
             html += `</tr></thead><tbody>`;
-
             strokes.forEach((s, i) => {
-                html += `<tr>
-        <td>${i + 1}</td>
-        <td>${s.starIds.join('|')}</td>
-        <td>${Math.round(s.x1)}</td>
-        <td>${Math.round(s.y1)}</td>
-        <td>${Math.round(s.x2)}</td>
-        <td>${Math.round(s.y2)}</td>
-        <td>${s.directionText}</td>
-        <td>${s.starCorrect ? 'True' : 'False'}</td>
-        </tr>`;
+                html += `<tr><td>${i + 1}</td><td>${s.starIds.join('|')}</td><td>${Math.round(s.x1)}</td><td>${Math.round(s.y1)}</td><td>${Math.round(s.x2)}</td><td>${Math.round(s.y2)}</td><td>${s.directionText}</td><td>${s.starCorrect ? 'True' : 'False'}</td></tr>`;
             });
-
             html += `</tbody></table></div>`;
-
             document.getElementById('finalStats').innerHTML = html;
         }
 
-        /* CSV EXPORT */
         function csvSafe(v) {
             if (v === undefined || v === null) return '';
             const s = String(v);
@@ -898,7 +818,6 @@
         }
 
         function downloadCSV() {
-            // Fix #4: Safe filenames
             const name = safeFilePart(document.getElementById('name').value.trim());
             const surname = safeFilePart(document.getElementById('surname').value.trim());
             const age = safeFilePart(document.getElementById('age').value.trim());
@@ -906,54 +825,24 @@
 
             const c = LANG[currentLang].csv;
             let rows = [];
-
-            rows.push([c.name, name]);
-            rows.push([c.surname, surname]);
-            rows.push([c.age, age]);
-            rows.push([]);
-            rows.push([c.totalSmall, stats.totalSmall]);
-            rows.push([c.demoCount, stats.demoCount]);
-            rows.push([c.maxScore, stats.maxScore]);
-            rows.push([c.cancelled, stats.cancelled]);
-            rows.push([c.left, stats.cancelledLeft]);
-            rows.push([c.right, stats.cancelledRight]);
-            rows.push([c.laterality, stats.lateralityIndex]);
-            rows.push([c.USN, stats.USN]);
-            rows.push([c.duration, stats.durationSeconds]);
-            rows.push([c.avg, stats.avgTime]);
-            rows.push([c.hitLines, stats.hitLines]);
-            rows.push([c.missLines, stats.missLines]);
-            rows.push([]);
-            rows.push([c.strokes]);
-            rows.push(c.strokeCols);
+            rows.push([c.name, name], [c.surname, surname], [c.age, age], []);
+            rows.push([c.totalSmall, stats.totalSmall], [c.demoCount, stats.demoCount], [c.maxScore, stats.maxScore]);
+            rows.push([c.cancelled, stats.cancelled], [c.left, stats.cancelledLeft], [c.right, stats.cancelledRight]);
+            rows.push([c.laterality, stats.lateralityIndex], [c.USN, stats.USN]);
+            rows.push([c.duration, stats.durationSeconds], [c.avg, stats.avgTime]);
+            rows.push([c.hitLines, stats.hitLines], [c.missLines, stats.missLines], [], [c.strokes], c.strokeCols);
 
             strokes.forEach((s, i) => {
-                rows.push([
-                    i + 1,
-                    s.starIds.join('|'),
-                    Math.round(s.x1),
-                    Math.round(s.y1),
-                    Math.round(s.x2),
-                    Math.round(s.y2),
-                    s.directionText,
-                    s.starCorrect ? 'True' : 'False'
-                ]);
+                rows.push([i + 1, s.starIds.join('|'), Math.round(s.x1), Math.round(s.y1), Math.round(s.x2), Math.round(s.y2), s.directionText, s.starCorrect ? 'True' : 'False']);
             });
-
-            rows.push([]);
-            const orderHeader = LANG[currentLang].results.orderTitle;
-            rows.push([orderHeader, starCancelOrder.join(' → ')]);
+            rows.push([], [LANG[currentLang].results.orderTitle, starCancelOrder.join(' → ')]);
 
             const csv = '\uFEFF' + rows.map(r => r.map(csvSafe).join(',')).join('\r\n');
-
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `${fileCode}_${name}_${surname}_${age}.csv`;
-            a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = `${fileCode}_${name}_${surname}_${age}.csv`; a.click();
         }
 
-        /* PNG EXPORT */
         function downloadPNG() {
             const name = safeFilePart(document.getElementById('name').value.trim());
             const surname = safeFilePart(document.getElementById('surname').value.trim());
@@ -961,59 +850,59 @@
             if (!name || !surname || !age) { alert(LANG[currentLang].alertFill); return; }
 
             const exportCanvas = document.createElement("canvas");
-            exportCanvas.width = canvas.width;
-            exportCanvas.height = canvas.height;
-
+            exportCanvas.width = canvas.width; exportCanvas.height = canvas.height;
             const ex = exportCanvas.getContext("2d");
-            ex.fillStyle = "#ffffff";
-            ex.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+            ex.fillStyle = "#ffffff"; ex.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
             ex.drawImage(canvas, 0, 0);
 
             exportCanvas.toBlob(b => {
                 const url = URL.createObjectURL(b);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${fileCode}_${name}_${surname}_${age}.png`;
-                a.click();
+                const a = document.createElement('a'); a.href = url;
+                a.download = `${fileCode}_${name}_${surname}_${age}.png`; a.click();
                 URL.revokeObjectURL(url);
             });
         }
 
-        /* PATTERN PNG EXPORT WITH GREEN/RED STROKES + ARROWS */
         function downloadPatternPNG() {
             const name = safeFilePart(document.getElementById('name').value.trim());
             const surname = safeFilePart(document.getElementById('surname').value.trim());
             const age = safeFilePart(document.getElementById('age').value.trim());
             if (!name || !surname || !age) { alert(LANG[currentLang].alertFill); return; }
 
+            // Fix #1: Explicit W/H calculation for high-DPI scaling consistency
+            const W = canvas.width / DPR;
+            const H = canvas.height / DPR;
+
             const patternCanvas = document.createElement("canvas");
-            patternCanvas.width = canvas.width;
-            patternCanvas.height = canvas.height;
+            patternCanvas.width = Math.floor(W * DPR);
+            patternCanvas.height = Math.floor(H * DPR);
             const pctx = patternCanvas.getContext("2d");
 
-            // White background
-            pctx.fillStyle = "#ffffff";
-            pctx.fillRect(0, 0, patternCanvas.width, patternCanvas.height);
+            // Fix: Draw in CSS units
+            pctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-            // Faint stars for context (Fix #2: Dynamic radius)
+            // Safe background fill using calculated CSS W/H
+            pctx.fillStyle = "#ffffff";
+            pctx.fillRect(0, 0, W, H);
+
             pctx.globalAlpha = 0.2;
             smallStars.forEach(s => {
-                if (s.demo) return;
+                if (s.demo) return; // Skip demo stars
                 const cx = s.x + s.w / 2;
                 const cy = s.y + s.h / 2;
                 pctx.beginPath();
-                // Proportional radius instead of fixed 6
-                const r = Math.max(3, 0.4 * s.w);
+                // Fix: dynamic radius
+                const r = Math.max(3, 0.35 * s.r);
                 pctx.arc(cx, cy, r, 0, Math.PI * 2);
                 pctx.fillStyle = "#000000";
                 pctx.fill();
             });
             pctx.globalAlpha = 1;
 
-            // Draw strokes with green/red logic
             pctx.lineCap = "round";
             strokes.forEach((s, i) => {
-                pctx.lineWidth = 3 * DPR;
+                // Fix: scaleFactor consistency for mobile
+                pctx.lineWidth = 3 * scaleFactor;
                 pctx.strokeStyle = s.starCorrect ? "#2eb82e" : "#d9534f";
 
                 pctx.beginPath();
@@ -1021,62 +910,40 @@
                 pctx.lineTo(s.x2, s.y2);
                 pctx.stroke();
 
-                // Stroke number label (orange like main canvas)
                 pctx.fillStyle = "#ff8800";
-                pctx.font = `${18 * DPR}px Arial`;
-                pctx.fillText(i + 1, s.x1 + 6, s.y1 - 6);
+                pctx.font = `${18 * scaleFactor}px Arial`;
+                pctx.fillText(i + 1, s.x1 + (6 * scaleFactor), s.y1 - (6 * scaleFactor));
             });
 
-            // Compute midpoints
-            const midpoints = strokes.map(s => {
-                const mx = (s.x1 + s.x2) / 2;
-                const my = (s.y1 + s.y2) / 2;
-                return { mx, my };
-            });
+            const midpoints = strokes.map(s => ({ mx: (s.x1 + s.x2) / 2, my: (s.y1 + s.y2) / 2 }));
 
-            // Arrow helper
             function drawArrow(ctx, x1, y1, x2, y2) {
-                const head = 12 * DPR;
+                const head = 12 * scaleFactor;
                 const a = Math.atan2(y2 - y1, x2 - x1);
-
-                ctx.beginPath();
-                ctx.moveTo(x1, y1);
-                ctx.lineTo(x2, y2);
-                ctx.stroke();
-
+                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
                 ctx.beginPath();
                 ctx.moveTo(x2, y2);
                 ctx.lineTo(x2 - head * Math.cos(a - Math.PI / 6), y2 - head * Math.sin(a - Math.PI / 6));
                 ctx.lineTo(x2 - head * Math.cos(a + Math.PI / 6), y2 - head * Math.sin(a + Math.PI / 6));
-                ctx.closePath();
-                ctx.fill();
+                ctx.closePath(); ctx.fill();
             }
 
-            // Arrows between midpoint sequence
             if (midpoints.length > 1) {
-                pctx.strokeStyle = "#555";
-                pctx.fillStyle = "#555";
-                pctx.lineWidth = 2 * DPR;
-
+                pctx.strokeStyle = "#555"; pctx.fillStyle = "#555"; pctx.lineWidth = 2 * scaleFactor;
                 for (let i = 0; i < midpoints.length - 1; i++) {
-                    const p1 = midpoints[i];
-                    const p2 = midpoints[i + 1];
+                    const p1 = midpoints[i], p2 = midpoints[i + 1];
                     drawArrow(pctx, p1.mx, p1.my, p2.mx, p2.my);
                 }
             }
 
-            // Save PNG
             patternCanvas.toBlob(b => {
                 const url = URL.createObjectURL(b);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${fileCode}_${name}_${surname}_${age}_pattern.png`;
-                a.click();
+                const a = document.createElement('a'); a.href = url;
+                a.download = `${fileCode}_${name}_${surname}_${age}_pattern.png`; a.click();
                 URL.revokeObjectURL(url);
             });
         }
 
-        /* EVENT BINDINGS */
         document.getElementById('startBtn').addEventListener('click', startTest);
         document.getElementById('finishBtn').addEventListener('click', finishTest);
         document.getElementById('resetBtn').addEventListener('click', resetTest);
@@ -1095,10 +962,7 @@
 
         setCanvasSize(); render();
         window.addEventListener('resize', () => {
-            if (!testStarted) {
-                setCanvasSize();
-                render();
-            }
+            if (!testStarted) { setCanvasSize(); render(); }
         });
         applyLang('en');
     </script>
