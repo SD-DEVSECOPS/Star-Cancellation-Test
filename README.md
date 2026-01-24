@@ -3,6 +3,15 @@
 This repository contains the **Star Cancellation Test** — a browser-based assessment tool designed to measure visuospatial attention, perceptual accuracy, and motor control.  
 It is widely used in **neurology**, **neuropsychology**, and **cognitive research**, including studies on **Unilateral Spatial Neglect (USN)**.
 
+<div align="center">
+
+## 🚀 [CLICK HERE TO START TEST](https://sd-devsecops.github.io/Star-Cancellation-Test/CancellationOfConstellation.html)
+**https://sd-devsecops.github.io/Star-Cancellation-Test/CancellationOfConstellation.html**
+
+*(Alternative: [Object Cancellation Test](https://sd-devsecops.github.io/Star-Cancellation-Test/ObjectCancellation.html))*
+
+</div>
+
 ---
 
 ## 📌 Overview
@@ -17,18 +26,12 @@ The system automatically records:
 - Correctly cancelled stars  
 - **Cancellation order (first → last)**  
 - **Stroke-by-stroke metrics**  
-- **Stroke direction detection** (Left→Right, Right→Left, Top→Bottom, Bottom→Top)  
+- **Stroke direction detection**  
 - Left/right spatial distribution  
-- **Laterality Index**  
-- **USN classification**  
-- Full statistical summary  
+- **Laterality Index** & **USN classification**  
+- Full statistical global summary  
 - **CSV export** (UTF-8 BOM, multilingual safe)  
-- **PNG export**  
-- **NEW: Pattern PNG export**  
-  - Green = correct (hit ≥1 star)  
-  - Red = incorrect  
-  - Arrows showing visual scanning path  
-  - Light markers showing all small stars  
+- **Pattern PNG export** (visualizing search strategy)
 
 Researchers may configure object counts:
 
@@ -39,89 +42,56 @@ Researchers may configure object counts:
 | Letters     | 10–30            |
 | Words       | 10–20            |
 
-> ✔ Smart placement algorithm prevents overlapping and ensures even spatial distribution.
+---
+
+## ⚙ Technical Specifications
+
+### Precision Engine
+The tool uses a **Geometric Line-Rectangle Intersection** algorithm rather than simple point sampling.
+- **Accuracy**: Fast swipes or partial detections are registered with 100% mathematical precision.
+- **Robustness**: Even if a stroke moves quickly across the screen, it will not "skip" over stars.
+
+### Mobile Data Safety
+Digital tests often suffer from data loss if the device is rotated. This tool features **Smart Resize Protection**:
+- If the screen rotates or the address bar toggles, the test **preserves the current state**.
+- The canvas does not reset, ensuring the patient's progress is never lost due to device handling.
 
 ---
 
 ## 🌐 Cross-Platform Compatibility
 
 Compatible with all modern browsers:
-
 - ✔ Desktop & laptop (mouse input)  
 - ✔ Mobile phones  
 - ✔ Tablets / iPad  
-- ✔ Responsive canvas scaling  
-- ✔ Touch-safe pointer control  
+- ✔ Touch-safe pointer control (blocks native scrolling)  
 - ✔ No external libraries required  
 
 ---
 
 ## 🧪 How to Use
 
-**Live Test Page:**  
-For Star Cancellation Test:
-https://sd-devsecops.github.io/Star-Cancellation-Test/CancellationOfConstellation.html
-
-For Objects only Test:
-https://sd-devsecops.github.io/Star-Cancellation-Test/ObjectCancellation.html
-
-1. Optionally adjust counts of stars, letters, and words.  
-2. Select test duration.  
-3. Press **Start Test**.  
-4. Participant draws strokes directly on the canvas.  
-5. Upon timeout or pressing **Finish Test**, the system displays:
-   - Summary statistics  
-   - Cancellation order  
-   - Stroke direction table  
-   - Input fields for:
-     - Name  
-     - Surname  
-     - Age  
+1. **Setup**: Adjust object counts (stars/words) and set a timeout duration. 
+2. **Start**: Press **Start Test**.
+3. **Execution**: Patient draws lines through the small stars.
+4. **Finish**: Press **Finish Test** or wait for timeout.
+5. **Analyze**:
+   - View on-screen Heatmap and Stats.
+   - Enter Patient Info (Name/Age).
+   - Download **CSV** for statistical analysis.
+   - Download **Pattern PNG** for visual search path reconstruction.
 
 ### Export Options
 
 #### 📄 **CSV Export**
-Includes:
-- Participant data  
-- Object configuration  
-- Cancellation totals  
-- Left/right distribution  
-- Laterality Index  
-- USN classification  
-- Test duration  
-- Average cancellation time  
-- Complete stroke dataset  
-- Full cancellation order  
+Detailed dataset including: Laterality Index, USN Classification, Time-per-star, and precise coordinates of every single stroke.
 
-#### 🖼️ **PNG Export**
-Saves the final visual state of the canvas.
-
-#### 🧭 **Pattern PNG Export (NEW)**
-Ideal for:
-- Clinical assessment  
-- Research visualizations  
-- Behavioral pattern mapping  
-
-Includes:
-- Green/red stroke coloring  
-- Arrow-based visual scanning path  
-- Stroke numbering  
-- Light background markers for all stars  
-
----
-
-## ✨ Features
-
-- English, Türkçe, Deutsch language support  
-- Non-overlapping randomized placement  
-- Demo stars  
-- Missed stars highlighted  
-- Cancelled stars labeled  
-- Stroke numbering and direction analysis  
-- High-resolution PNG export  
-- UTF-8 CSV export  
-- Pattern-analysis visualization  
-- Pure HTML + JavaScript (zero dependencies)
+#### 🧭 **Pattern PNG Export**
+A visual map of the patient's performance:
+- **Green Lines**: Correct hits.
+- **Red Lines**: Misses/False positives.
+- **Arrows**: Show the exact sequence and direction of movement (e.g., did they scan Left-to-Right or chaotic?).
+- **Markers**: Show positions of all target stars to easily spot omissions (neglect).
 
 ---
 
@@ -142,68 +112,36 @@ Please use the following provisional citation:
 
 ## ⚠ Ethical & Usage Disclaimer
 
-This software is provided for **research**, **educational**, and **clinical development** purposes.  
 To ensure responsible and ethical use, the following conditions apply:
 
----
-
 ### 🏥 Clinical Use
-
 - This tool **does not replace** standardized or professionally validated diagnostic instruments.  
 - Interpretation must only be performed by a **licensed clinician**, **neuropsychologist**, or a **qualified specialist**.  
 - All assessment outcomes must be **independently verified** before being used in any clinical or medical decision-making.  
 - Users must obtain **informed consent** from participants and appropriate **ethical approval** for all human-subject testing.
 
----
-
 ### 🔬 Research Use
-
 Researchers using this tool must:
-
 - Obtain **IRB / Ethics Committee approval** where required  
 - Follow local and international data protection regulations (e.g., **GDPR**, **HIPAA**)  
-- Properly **cite this project** in publications, reports, or presentations  
-- Ensure that data collection and storage follow recognized scientific and ethical standards  
-
----
+- Properly **cite this project** in publications  
 
 ### 💼 Commercial Use
-
 Commercial use of this software is **not permitted** without **explicit written authorization** from the project author.
 
 For licensing discussions, institutional deployment, or collaboration requests, contact:
-
 📧 **sdswat93@gmail.com**
 
 ---
 
-### ⚖ Liability
-
-This software is provided **“as is”**, without any warranties, guarantees, or certifications.  
-The authors and contributors assume **no responsibility** for:
-
-- Misuse or misinterpretation  
-- Diagnostic mistakes  
-- Data corruption or loss  
-- Any direct or indirect damages arising from its use  
-
----
-
 ### ✅ User Agreement
-
 By using this tool, you agree to:
-
 - Follow all ethical guidelines listed above  
 - Obtain all required permissions  
-- Properly cite the software where relevant  
 - Use the results responsibly within the limits of the tool  
 
 Failure to follow these terms may result in misuse and invalidation of collected data.
 
 ---
 
-
----
-
-**Project by:** *Zengin, M.*  
-**Enhanced by:** *ChatGPT*
+**Project by:** *Zengin, M.*
