@@ -27,6 +27,18 @@
             user-select: auto;
         }
 
+        html,
+        body {
+            overscroll-behavior: none;
+            touch-action: manipulation;
+        }
+
+        body.noScroll {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
+
         body {
             margin: 0;
             font-family: Arial, sans-serif;
@@ -220,7 +232,7 @@
         </div>
     </div>
 
-    <div id="timer">Time Left: --:--</div>
+    <div id="timer">--:--</div>
 
     <div id="canvasWrap"><canvas id="canvas"></canvas></div>
 
@@ -257,7 +269,11 @@
         let DPR = window.devicePixelRatio || 1, objects = [], smallStars = [], strokes = [], rng = Math.random;
         let testStarted = false, testFinished = false, drawEnabled = false, startTime = null, countdownInterval = null, stats = {};
         let fileCode = "";
-        let scaleFactor = window.innerWidth < 600 ? 0.5 : 1;
+        let scaleFactor = 1;
+        let scrollYBeforeLock = 0;
+        let remainingSeconds = 0;
+        let pausedAt = null;
+        let totalPausedMs = 0;
 
         let tempStroke = null;
         let isDrawing = false, startPoint = null;
@@ -268,6 +284,26 @@
             if (e.touches.length > 1) {
                 e.preventDefault();
             }
+        }
+
+        function preventScroll(e) {
+            if (testStarted && !testFinished) e.preventDefault();
+        }
+
+        function preventWheel(e) {
+            if (testStarted && !testFinished) e.preventDefault();
+        }
+
+        function preventKeys(e) {
+            if (!testStarted || testFinished) return;
+            const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Space", "Spacebar", "PageUp", "PageDown", "Home", "End"];
+            if (keys.includes(e.key)) e.preventDefault();
+        }
+
+        function handleVisibility() {
+            if (!testStarted || testFinished) return;
+            if (document.hidden) pauseTest();
+            else resumeTest();
         }
 
         /* LANGUAGES */
@@ -283,6 +319,8 @@
                 startBtn: 'Start Test',
                 finishBtn: 'Finish Test',
                 resetBtn: 'Reset Test',
+                timeLeft: 'Time Left:',
+                paused: '(Paused)',
                 alertFill: 'Fill all fields',
                 alertTime: 'Time exceeded. Test auto-finished.',
                 results: {
@@ -324,6 +362,8 @@
                 startBtn: 'Testi Başlat',
                 finishBtn: 'Testi Bitir',
                 resetBtn: 'Testi Sıfırla',
+                timeLeft: 'Kalan Süre:',
+                paused: '(Beklemede)',
                 alertFill: 'Tüm alanları doldurun',
                 alertTime: 'Süre doldu. Test otomatik olarak bitirildi.',
                 results: {
@@ -365,6 +405,8 @@
                 startBtn: 'Test Starten',
                 finishBtn: 'Test Beenden',
                 resetBtn: 'Test Zurücksetzen',
+                timeLeft: 'Verbleibende Zeit:',
+                paused: '(Pausiert)',
                 alertFill: 'Alle Felder ausfüllen',
                 alertTime: 'Zeit überschritten. Test automatisch beendet.',
                 results: {
@@ -389,7 +431,7 @@
                     duration: 'DauerSekunden', avg: 'SchnittProTreffer',
                     hitLines: 'TrefferLinien', missLines: 'FehlLinien',
                     strokes: 'Striche',
-                    strokeCols: ['Strich#', 'SternNamen', 'x1', 'y1', 'x2', 'y2', 'Richtung', 'Korrekt']
+                    strokeCols: ['Strich#', 'Sternnamen', 'x1', 'y1', 'x2', 'y2', 'Richtung', 'Korrekt']
                 },
                 dirStrings: { ltr: 'Links→Rechts', rtl: 'Rechts→Links', ttb: 'Oben→Unten', btt: 'Unten→Oben' },
                 wordsList: ["SONNE", "MOND", "WASSER", "HAUS", "STRASSE", "SAND", "AST", "DORF", "JUNGE", "HAND"]
@@ -412,6 +454,11 @@
             document.getElementById('startBtn').textContent = t.startBtn;
             document.getElementById('finishBtn').textContent = t.finishBtn;
             document.getElementById('resetBtn').textContent = t.resetBtn;
+            if (!testStarted || testFinished) {
+                document.getElementById('timer').textContent = `${t.timeLeft} --:--`;
+            } else if (pausedAt) {
+                document.getElementById('timer').textContent = `${t.timeLeft} ${formatTime(remainingSeconds)} ${t.paused}`;
+            }
         }
 
         /* UTILS */
@@ -708,6 +755,16 @@
             drawEnabled = true;
 
             document.addEventListener('touchstart', preventZoom, { passive: false });
+            document.addEventListener('touchmove', preventScroll, { passive: false });
+            document.addEventListener('visibilitychange', handleVisibility, { passive: true });
+            window.addEventListener('wheel', preventWheel, { passive: false });
+            window.addEventListener('keydown', preventKeys, { passive: false });
+
+            scrollYBeforeLock = window.scrollY;
+            totalPausedMs = 0;
+            pausedAt = null;
+            document.body.style.top = `-${scrollYBeforeLock}px`;
+            document.body.classList.add("noScroll");
             setLangButtonsDisabled(true);
             setSettingsDisabled(true);
 
@@ -716,13 +773,17 @@
             document.getElementById('finishBtn').disabled = false;
             document.getElementById('startBtn').disabled = true;
 
-            let sec = parseInt(document.getElementById('timeoutMinutes').value, 10) * 60;
-            document.getElementById('timer').textContent = 'Time Left: ' + formatTime(sec);
+            remainingSeconds = parseInt(document.getElementById('timeoutMinutes').value, 10) * 60;
+            document.getElementById('timer').textContent = `${LANG[currentLang].timeLeft} ${formatTime(remainingSeconds)}`;
+            startTimer();
+        }
+
+        function startTimer() {
             clearInterval(countdownInterval);
             countdownInterval = setInterval(() => {
-                sec--;
-                document.getElementById('timer').textContent = 'Time Left: ' + formatTime(sec);
-                if (sec <= 0) {
+                remainingSeconds = Math.max(0, remainingSeconds - 1);
+                document.getElementById('timer').textContent = `${LANG[currentLang].timeLeft} ${formatTime(remainingSeconds)}`;
+                if (remainingSeconds === 0) {
                     clearInterval(countdownInterval);
                     finishTest();
                     alert(LANG[currentLang].alertTime);
@@ -730,13 +791,48 @@
             }, 1000);
         }
 
+        function pauseTest() {
+            if (!testStarted || testFinished || !drawEnabled) return;
+            drawEnabled = false;
+            pausedAt = Date.now();
+            clearInterval(countdownInterval);
+            document.getElementById('timer').textContent = `${LANG[currentLang].timeLeft} ${formatTime(remainingSeconds)} ${LANG[currentLang].paused}`;
+        }
+
+        function resumeTest() {
+            if (!testStarted || testFinished || drawEnabled) return;
+            drawEnabled = true;
+            if (pausedAt) {
+                totalPausedMs += (Date.now() - pausedAt);
+                pausedAt = null;
+            }
+            startTimer();
+        }
+
         function finishTest() {
             if (!testStarted || testFinished) return;
             testFinished = true;
             drawEnabled = false;
             clearInterval(countdownInterval);
-            document.getElementById('timer').textContent = 'Time Left: 00:00';
+
+            if (pausedAt) {
+                totalPausedMs += (Date.now() - pausedAt);
+                pausedAt = null;
+            }
+
+            document.getElementById('timer').textContent = `${LANG[currentLang].timeLeft} 00:00`;
+
+            // Restore Zoom
             document.removeEventListener('touchstart', preventZoom);
+            document.removeEventListener('touchmove', preventScroll);
+            document.removeEventListener('visibilitychange', handleVisibility);
+            window.removeEventListener('wheel', preventWheel);
+            window.removeEventListener('keydown', preventKeys);
+            document.body.classList.remove("noScroll");
+            const y = scrollYBeforeLock || 0;
+            document.body.style.top = "";
+            window.scrollTo(0, y);
+            scrollYBeforeLock = 0;
 
             render(); computeStats();
 
@@ -756,6 +852,15 @@
             strokes = []; objects = []; smallStars = []; starCancelOrder = [];
             drawEnabled = false;
             document.removeEventListener('touchstart', preventZoom);
+            document.removeEventListener('touchmove', preventScroll);
+            document.removeEventListener('visibilitychange', handleVisibility);
+            window.removeEventListener('wheel', preventWheel);
+            window.removeEventListener('keydown', preventKeys);
+            document.body.classList.remove("noScroll");
+            const yr = scrollYBeforeLock || 0;
+            document.body.style.top = "";
+            window.scrollTo(0, yr);
+            scrollYBeforeLock = 0;
 
             document.getElementById('statsPanel').style.display = 'none';
             document.getElementById('userForm').style.display = 'none';
@@ -764,7 +869,7 @@
             setLangButtonsDisabled(false);
             setSettingsDisabled(false);
 
-            document.getElementById('timer').textContent = 'Time Left: --:--';
+            document.getElementById('timer').textContent = `${LANG[currentLang].timeLeft} --:--`;
             setCanvasSize(); render();
         }
 
@@ -777,7 +882,7 @@
             let USN = 'None';
             if (lateralityIndex <= 0.46) USN = 'Left'; else if (lateralityIndex >= 0.54) USN = 'Right';
 
-            const duration = Math.round((Date.now() - startTime) / 1000);
+            const duration = Math.round((Date.now() - startTime - totalPausedMs) / 1000);
             const avgTime = cancelled > 0 ? (duration / cancelled).toFixed(2) : '—';
             const hitLines = strokes.filter(s => s.starCorrect).length;
             const missLines = strokes.length - hitLines;
@@ -881,6 +986,11 @@
             // Fix: Draw in CSS units
             pctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
+            pctx.imageSmoothingEnabled = true;
+
+            // Best practice: clear before filling
+            pctx.clearRect(0, 0, W, H);
+
             // Safe background fill using calculated CSS W/H
             pctx.fillStyle = "#ffffff";
             pctx.fillRect(0, 0, W, H);
@@ -912,6 +1022,7 @@
 
                 pctx.fillStyle = "#ff8800";
                 pctx.font = `${18 * scaleFactor}px Arial`;
+                pctx.textBaseline = "alphabetic";
                 pctx.fillText(i + 1, s.x1 + (6 * scaleFactor), s.y1 - (6 * scaleFactor));
             });
 
@@ -954,7 +1065,7 @@
         canvas.addEventListener('pointerdown', pointerDown);
         canvas.addEventListener('pointermove', pointerMove);
         canvas.addEventListener('pointerup', pointerUp);
-        canvas.addEventListener('pointercancel', pointerUp);
+        canvas.addEventListener('pointercancel', () => { if (isDrawing) { isDrawing = false; tempStroke = null; render(); } });
         canvas.addEventListener('pointerleave', () => { if (isDrawing) { isDrawing = false; tempStroke = null; render(); } });
 
         document.querySelectorAll('#languageButtons button')
