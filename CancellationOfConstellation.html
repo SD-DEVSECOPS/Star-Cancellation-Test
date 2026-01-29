@@ -207,13 +207,13 @@
         </div>
 
         <div class="settings">
-            <label id="labelSmallStars"><span>Small stars (50-80):</span> <input id="smallStarsInput" type="number"
+            <label id="labelSmallStars"><span>Small stars:</span> <input id="smallStarsInput" type="number"
                     value="56"></label>
-            <label id="labelLargeStars"><span>Big stars (50-70):</span> <input id="largeStarsInput" type="number"
+            <label id="labelLargeStars"><span>Big stars:</span> <input id="largeStarsInput" type="number"
                     value="52"></label>
-            <label id="labelLetters"><span>Letters (10-30):</span> <input id="lettersInput" type="number"
+            <label id="labelLetters"><span>Letters:</span> <input id="lettersInput" type="number"
                     value="13"></label>
-            <label id="labelWords"><span>Words (10-20):</span> <input id="wordsInput" type="number" value="10"></label>
+            <label id="labelWords"><span>Words:</span> <input id="wordsInput" type="number" value="10"></label>
         </div>
     </div>
 
@@ -316,10 +316,10 @@
             en: {
                 pageTitle: 'Star Cancellation Test',
                 demoNote: '(Stars with red lines are examples; do not cancel them)',
-                labelSmallStars: 'Small stars (50-80):',
-                labelLargeStars: 'Big stars (50-70):',
-                labelLetters: 'Letters (10-30):',
-                labelWords: 'Words (10-20):',
+                labelSmallStars: 'Small stars:',
+                labelLargeStars: 'Big stars:',
+                labelLetters: 'Letters:',
+                labelWords: 'Words:',
                 labelTimeout: 'Timeout (minutes):',
                 startBtn: 'Start Test',
                 finishBtn: 'Finish Test',
@@ -359,10 +359,10 @@
             tr: {
                 pageTitle: 'Yıldız Silme Testi',
                 demoNote: '(Kırmızı çizgili yıldızlar örnektir, onları çizmeyin)',
-                labelSmallStars: 'Küçük yıldızlar (50-80):',
-                labelLargeStars: 'Büyük yıldızlar (50-70):',
-                labelLetters: 'Harfler (10-30):',
-                labelWords: 'Kelimeler (10-20):',
+                labelSmallStars: 'Küçük yıldızlar:',
+                labelLargeStars: 'Büyük yıldızlar:',
+                labelLetters: 'Harfler:',
+                labelWords: 'Kelimeler:',
                 labelTimeout: 'Zaman Aşımı (dakika):',
                 startBtn: 'Testi Başlat',
                 finishBtn: 'Testi Bitir',
@@ -402,10 +402,10 @@
             de: {
                 pageTitle: 'Stern-Streich-Test',
                 demoNote: '(Sterne mit roten Linien sind Beispiele; nicht durchstreichen)',
-                labelSmallStars: 'Kleine Sterne (50-80):',
-                labelLargeStars: 'Große Sterne (50-70):',
-                labelLetters: 'Buchstaben (10-30):',
-                labelWords: 'Wörter (10-20):',
+                labelSmallStars: 'Kleine Sterne:',
+                labelLargeStars: 'Große Sterne:',
+                labelLetters: 'Buchstaben:',
+                labelWords: 'Wörter:',
                 labelTimeout: 'Zeitlimit (Minuten):',
                 startBtn: 'Test Starten',
                 finishBtn: 'Test Beenden',
@@ -624,7 +624,7 @@
             const remaining = Math.max(0, CONFIG.smallStarsCount - CONFIG.demoSmallStars);
             for (let i = 0; i < remaining; i++) {
                 const r = CONFIG.smallStarR * scaleFactor, w = r * 2, h = r * 2;
-                const areaX = i < remaining / 2 ? 0 : W / 2;
+                const areaX = i < remaining / 2 ? 0: W / 2;
                 const pos = tryPlace(w, h, areaX, W / 2);
                 const o = { id: `S${i + 1 + CONFIG.demoSmallStars}`, type: 'small', x: pos.x, y: pos.y, w, h, r, demo: false, cancelled: false };
                 objects.push(o); smallStars.push(o);
@@ -663,7 +663,7 @@
                 const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
 
                 if (o.type === 'small') {
-                    let color = o.demo ? '#888' : '#000';
+                    let color = o.demo ? '#888': '#000';
                     if (testFinished) {
                         if (o.cancelled) color = '#000';
                         else if (!o.demo) color = '#d9534f';
@@ -696,7 +696,7 @@
             }
 
             strokes.forEach((s, idx) => {
-                ctx.strokeStyle = testFinished ? (s.starIds.length > 0 ? '#2eb82e' : '#d9534f') : '#007acc';
+                ctx.strokeStyle = testFinished ? (s.starIds.length > 0 ? '#2eb82e': '#d9534f'): '#007acc';
                 ctx.lineWidth = 3;
                 ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
                 if (testFinished) {
@@ -713,7 +713,7 @@
 
         function computeDirection(x1, y1, x2, y2) {
             const dx = x2 - x1, dy = y2 - y1;
-            const code = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'ltr' : 'rtl') : (dy > 0 ? 'ttb' : 'btt');
+            const code = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'ltr': 'rtl'): (dy > 0 ? 'ttb': 'btt');
             return { code, text: LANG[currentLang].dirStrings[code] };
         }
 
@@ -916,12 +916,12 @@
             const cancelled = scored.filter(s => s.cancelled).length;
             const leftCancelled = scored.filter(s => s.cancelled && (s.x + s.w / 2) < (canvas.width / DPR) / 2).length;
             const rightCancelled = cancelled - leftCancelled;
-            const lateralityIndex = cancelled > 0 ? leftCancelled / cancelled : 0;
+            const lateralityIndex = cancelled > 0 ? leftCancelled / cancelled: 0;
             let USN = 'None';
             if (lateralityIndex <= 0.46) USN = 'Left'; else if (lateralityIndex >= 0.54) USN = 'Right';
 
             const duration = Math.round((Date.now() - startTime - totalPausedMs) / 1000);
-            const avgTime = cancelled > 0 ? (duration / cancelled).toFixed(2) : '—';
+            const avgTime = cancelled > 0 ? (duration / cancelled).toFixed(2): '—';
             const hitLines = strokes.filter(s => s.starCorrect).length;
             const missLines = strokes.length - hitLines;
 
@@ -942,12 +942,12 @@
                 ${r.hitLines}: ${hitLines}<br>
                 ${r.missLines}: ${missLines}<br>`;
 
-            html += `<div class="starOrder"><strong>${r.orderTitle}:</strong> ` + (starCancelOrder.length ? starCancelOrder.join(' → ') : '—') + `</div>`;
+            html += `<div class="starOrder"><strong>${r.orderTitle}:</strong> ` + (starCancelOrder.length ? starCancelOrder.join(' → '): '—') + `</div>`;
             html += `<div style="overflow:auto"><table><thead><tr>`;
             r.strokeTableHeaders.forEach(h => html += `<th>${h}</th>`);
             html += `</tr></thead><tbody>`;
             strokes.forEach((s, i) => {
-                html += `<tr><td>${i + 1}</td><td>${s.starIds.join('|')}</td><td>${Math.round(s.x1)}</td><td>${Math.round(s.y1)}</td><td>${Math.round(s.x2)}</td><td>${Math.round(s.y2)}</td><td>${s.directionText}</td><td>${s.starCorrect ? 'True' : 'False'}</td></tr>`;
+                html += `<tr><td>${i + 1}</td><td>${s.starIds.join('|')}</td><td>${Math.round(s.x1)}</td><td>${Math.round(s.y1)}</td><td>${Math.round(s.x2)}</td><td>${Math.round(s.y2)}</td><td>${s.directionText}</td><td>${s.starCorrect ? 'True': 'False'}</td></tr>`;
             });
             html += `</tbody></table></div>`;
             document.getElementById('finalStats').innerHTML = html;
@@ -976,7 +976,7 @@
             rows.push([c.hitLines, stats.hitLines], [c.missLines, stats.missLines], [], [c.strokes], c.strokeCols);
 
             strokes.forEach((s, i) => {
-                rows.push([i + 1, s.starIds.join('|'), Math.round(s.x1), Math.round(s.y1), Math.round(s.x2), Math.round(s.y2), s.directionText, s.starCorrect ? 'True' : 'False']);
+                rows.push([i + 1, s.starIds.join('|'), Math.round(s.x1), Math.round(s.y1), Math.round(s.x2), Math.round(s.y2), s.directionText, s.starCorrect ? 'True': 'False']);
             });
             rows.push([], [LANG[currentLang].results.orderTitle, starCancelOrder.join(' → ')]);
 
@@ -1051,7 +1051,7 @@
             strokes.forEach((s, i) => {
                 // Fix: scaleFactor consistency for mobile
                 pctx.lineWidth = 3 * scaleFactor;
-                pctx.strokeStyle = s.starCorrect ? "#2eb82e" : "#d9534f";
+                pctx.strokeStyle = s.starCorrect ? "#2eb82e": "#d9534f";
 
                 pctx.beginPath();
                 pctx.moveTo(s.x1, s.y1);
@@ -1144,3 +1144,4 @@
 </body>
 
 </html>
+
