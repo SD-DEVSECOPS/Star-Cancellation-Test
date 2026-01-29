@@ -1,6 +1,6 @@
 # ⭐ Star Cancellation Test (SCT)
 
-This repository contains the **Star Cancellation Test** — a browser-based assessment tool designed to measure visuospatial attention, perceptual accuracy, and motor control.  
+This repository contains the **Star Cancellation Test** — a browser-based assessment tool designed based on the **Behavioral Inattention Test (BIT)** to measure visuospatial attention, perceptual accuracy, and motor control.  
 It is widely used in **neurology**, **neuropsychology**, and **cognitive research**, including studies on **Unilateral Spatial Neglect (USN)**.
 
 <div align="center">
@@ -16,40 +16,52 @@ It is widely used in **neurology**, **neuropsychology**, and **cognitive researc
 
 ## 📌 Overview
 
-The test displays **small & large stars, letters, and words** randomly across an interactive canvas.
+The test displays **small & large stars, letters, and words** randomly across an interactive canvas, simulating a traditional A4 landscape paper assessment.
 
 **Participant task:**  
-Draw a stroke across each **small star** they detect.
+Draw a stroke across each **small star** (target) they detect.
 
 The system automatically records:
-
 - Correctly cancelled stars  
 - **Cancellation order (first → last)**  
-- **Stroke-by-stroke metrics**  
-- **Stroke direction detection**  
+- **Stroke-by-stroke metrics** (Coordinates, timestamps, and length)
+- **Stroke direction detection** (Instant detection of drawing orientation)
 - Left/right spatial distribution  
-- **Laterality Index** & **USN classification**  
+- **Laterality Index** & **USN classification** (Left-neglect, Right-neglect, or None)
 - Full statistical global summary  
 - **CSV export** (UTF-8 BOM, multilingual safe)  
-- **Pattern PNG export** (visualizing search strategy)
+- **Pattern PNG export** (visualizing the full search strategy)
 
-Researchers may configure object counts:
+### Researcher Configuration
+Researchers may configure object counts. The default BIT values are provided as a baseline:
 
-| Object Type | Recommended Range |
-|-------------|------------------|
-| Small stars | 50–80            |
-| Large stars | 50–70            |
-| Letters     | 10–30            |
-| Words       | 10–20            |
+| Object Type | Recommended Range | Paper Standard (BIT) |
+|-------------|------------------|----------------------|
+| Small stars | 50–80            | **56** (Targets)     |
+| Large stars | 50–70            | **52** (Distractors) |
+| Letters     | 10–30            | **13** (Distractors) |
+| Words       | 10–20            | **10** (Distractors) |
 
 ---
 
-## ⚙ Technical Specifications
+## ⚙ Technical & Clinical Specifications
+
+### Clinical Validity (BIT / A4 Standard)
+To ensure the digital test remains accurately correlated with paper-and-pencil versions:
+- **Physical Mapping**: An 1100px width is treated as a standard **297mm A4 sheet**.
+- **Accurate Sizing**: Targets are rendered at precisely **9mm** (34px) and distractors at **14mm** (52px) on desktop reference.
+- **Locked Aspect Ratio**: The test area is fixed to a **1.41:1 Landscape** ratio to match A4 paper dimensions perfectly.
+- **Stepped Scaling Engine**: Objects remain proportionally correct across phones (0.35x) and tablets (0.8x-1.0x).
 
 ### Precision Engine
 The tool uses a **Geometric Line-Rectangle Intersection** algorithm rather than simple point sampling.
 - **Accuracy**: Fast swipes or partial detections are registered with 100% mathematical precision.
 - **Robustness**: Even if a stroke moves quickly across the screen, it will not "skip" over stars.
+
+### Deterministic Placement Engine
+A multi-phase placement logic guarantees **zero object overlap**:
+- **Priority Phase**: Larger items (words/large stars) are placed first to optimize canvas density.
+- **Grid-Scan Fallback**: If random placement fails (common on small mobile screens), a systematic grid-scan identifies available space. This ensures performance even on the most crowded canvases.
 
 ### Mobile Data Safety
 Digital tests often suffer from data loss if the device is rotated. This tool features **Smart Resize Protection**:
@@ -62,7 +74,7 @@ Digital tests often suffer from data loss if the device is rotated. This tool fe
 
 Compatible with all modern browsers:
 - ✔ Desktop & laptop (mouse input)  
-- ✔ Mobile phones  
+- ✔ Mobile phones (responsive landscape)
 - ✔ Tablets / iPad  
 - ✔ Touch-safe pointer control (blocks native scrolling)  
 - ✔ No external libraries required  
@@ -84,7 +96,7 @@ Compatible with all modern browsers:
 ### Export Options
 
 #### 📄 **CSV Export**
-Detailed dataset including: Laterality Index, USN Classification, Time-per-star, and precise coordinates of every single stroke.
+Detailed dataset including: Laterality Index, USN Classification, Time-per-star, and precise coordinates/timestamps of every single stroke.
 
 #### 🧭 **Pattern PNG Export**
 A visual map of the patient's performance:
