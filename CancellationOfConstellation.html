@@ -503,8 +503,8 @@
 
         function randBetween(a, b) { return a + (b - a) * rng(); }
         // Added pad parameter for dynamic gap reduction during placement
-        function rectOverlap(a, b, pad = CONFIG.minGap * scaleFactor) {
-            return !(a.x + a.w + pad <= b.x - pad || a.x - pad >= b.x + b.w + pad || a.y + a.h + pad <= b.y - pad || a.y - pad >= b.y + b.h + pad);
+        function rectOverlap(a, b, gap = 0) {
+            return !(a.x + a.w + gap <= b.x || a.x >= b.x + b.w + gap || a.y + a.h + gap <= b.y || a.y >= b.y + b.h + gap);
         }
         function segLen(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
         function segIntersects(obj, x1, y1, x2, y2) {
@@ -551,10 +551,9 @@
                 const minX = areaX + pad, maxX = Math.max(minX, areaX + areaW - w - pad);
                 const minY = pad, maxY = Math.max(minY, H - h - pad);
 
-                // Try with reducing gap if space is tight
                 let currentGap = CONFIG.minGap * scaleFactor;
-                const levels = 4;
-                const attemptsPerLevel = CONFIG.MAX_PLACEMENT_ATTEMPTS / levels;
+                const levels = 5;
+                const attemptsPerLevel = Math.floor(CONFIG.MAX_PLACEMENT_ATTEMPTS / levels);
 
                 for (let level = 0; level < levels; level++) {
                     for (let attempt = 0; attempt < attemptsPerLevel; attempt++) {
@@ -566,11 +565,12 @@
                         }
                         if (ok) return c;
                     }
-                    currentGap *= 0.5; // Reduce gap requirement
+                    currentGap *= 0.5;
+                    if (currentGap < 1) currentGap = 0;
                 }
 
-                // Final strict fallback: placement with 0 pad but NO overlaps
-                for (let attempt = 0; attempt < 1000; attempt++) {
+                // Absolute fallback: thousands of attempts with ZERO gap
+                for (let attempt = 0; attempt < 50000; attempt++) {
                     const x = randBetween(minX, maxX), y = randBetween(minY, maxY);
                     const c = { x, y, w, h };
                     let ok = true;
@@ -580,6 +580,7 @@
                     if (ok) return c;
                 }
 
+                // If even metadata zero gap fails (extremely rare), return last tried but warn/log
                 return { x: randBetween(minX, maxX), y: randBetween(minY, maxY), w, h };
             }
 
