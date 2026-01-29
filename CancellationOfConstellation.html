@@ -477,8 +477,12 @@
             canvas.style.height = styleH + 'px';
             ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-            // Linear scaleFactor to prevent sudden density jumps
-            scaleFactor = Math.max(0.4, Math.min(1, styleW / 1100));
+            // Stepped scaling as requested:
+            if (styleW >= 800) scaleFactor = 1.0;
+            else if (styleW >= 600) scaleFactor = 0.85;
+            else if (styleW >= 400) scaleFactor = 0.7;
+            else scaleFactor = 0.5;
+
             return { w: styleW, h: styleH };
         }
 
