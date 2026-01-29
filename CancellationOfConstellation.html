@@ -261,10 +261,10 @@
     <script>
         /* CONFIG */
         const CONFIG = {
-            smallStarsCount: 56, demoSmallStars: 2, smallStarR: 11,
-            largeStarsCount: 52, largeStarR: 20,
-            lettersCount: 13, wordsCount: 10, wordFont: 16,
-            MAX_PLACEMENT_ATTEMPTS: 10000, minGap: 10,
+            smallStarsCount: 56, demoSmallStars: 2, smallStarR: 17, // 34px diameter (Clinical 9mm)
+            largeStarsCount: 52, largeStarR: 26, // 52px diameter (Clinical 14mm)
+            lettersCount: 13, wordsCount: 10, wordFont: 22,
+            MAX_PLACEMENT_ATTEMPTS: 2000, minGap: 10,
             MIN_STROKE_LEN: 6, MAX_STROKE_LEN: 115
         };
 
@@ -469,7 +469,10 @@
         /* UTILS */
         function setCanvasSize() {
             const wrap = document.getElementById('canvasWrap');
-            const styleW = wrap.clientWidth, styleH = Math.round(window.innerHeight * 0.72);
+            const styleW = wrap.clientWidth;
+            // Locked A4 Landscape Aspect Ratio (Width / 1.41)
+            const styleH = Math.round(styleW / 1.41);
+
             DPR = window.devicePixelRatio || 1;
             canvas.width = Math.floor(styleW * DPR);
             canvas.height = Math.floor(styleH * DPR);
@@ -477,8 +480,8 @@
             canvas.style.height = styleH + 'px';
             ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-            // Linear scaleFactor to prevent sudden density jumps
-            scaleFactor = Math.max(0.4, Math.min(1, styleW / 1100));
+            // Linear scaleFactor relative to A4 Desktop baseline (1100px)
+            scaleFactor = Math.max(0.35, Math.min(1.2, styleW / 1100));
             return { w: styleW, h: styleH };
         }
 
@@ -498,8 +501,8 @@
 
         function randBetween(a, b) { return a + (b - a) * rng(); }
         // Added pad parameter for dynamic gap reduction during placement
-        function rectOverlap(a, b, pad = CONFIG.minGap * scaleFactor) {
-            return !(a.x + a.w + pad <= b.x - pad || a.x - pad >= b.x + b.w + pad || a.y + a.h + pad <= b.y - pad || a.y - pad >= b.y + b.h + pad);
+        function rectOverlap(a, b, gap = 0) {
+            return !(a.x + a.w + gap <= b.x || a.x >= b.x + b.w + gap || a.y + a.h + gap <= b.y || a.y >= b.y + b.h + gap);
         }
         function segLen(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
         function segIntersects(obj, x1, y1, x2, y2) {
@@ -546,10 +549,10 @@
                 const minX = areaX + pad, maxX = Math.max(minX, areaX + areaW - w - pad);
                 const minY = pad, maxY = Math.max(minY, H - h - pad);
 
-                // Try with reducing gap if space is tight
+                // Phase 1: Random attempts with gap reduction
                 let currentGap = CONFIG.minGap * scaleFactor;
-                const levels = 4;
-                const attemptsPerLevel = CONFIG.MAX_PLACEMENT_ATTEMPTS / levels;
+                const levels = 5;
+                const attemptsPerLevel = Math.floor(CONFIG.MAX_PLACEMENT_ATTEMPTS / levels);
 
                 for (let level = 0; level < levels; level++) {
                     for (let attempt = 0; attempt < attemptsPerLevel; attempt++) {
@@ -561,37 +564,26 @@
                         }
                         if (ok) return c;
                     }
-                    currentGap *= 0.5; // Reduce gap requirement
+                    currentGap *= 0.5;
+                    if (currentGap < 1) currentGap = 0;
                 }
 
-                // Final strict fallback: placement with 0 pad but NO overlaps
-                for (let attempt = 0; attempt < 1000; attempt++) {
-                    const x = randBetween(minX, maxX), y = randBetween(minY, maxY);
-                    const c = { x, y, w, h };
-                    let ok = true;
-                    for (const o of objects) {
-                        if (rectOverlap(c, o, 0)) { ok = false; break; }
+                // Phase 2: Systematic Grid Scan (Absolute Fallback)
+                // If random placement fails, scan the x/y grid to find ANY available pixel
+                const step = 4;
+                for (let sy = minY; sy <= maxY; sy += step) {
+                    for (let sx = minX; sx <= maxX; sx += step) {
+                        const c = { x: sx, y: sy, w, h };
+                        let ok = true;
+                        for (const o of objects) {
+                            if (rectOverlap(c, o, 0)) { ok = false; break; }
+                        }
+                        if (ok) return c;
                     }
-                    if (ok) return c;
                 }
 
+                // Final safety: Return random even if overlapping (shouldn't happen with Grid Scan)
                 return { x: randBetween(minX, maxX), y: randBetween(minY, maxY), w, h };
-            }
-
-            for (let i = 0; i < CONFIG.demoSmallStars; i++) {
-                const r = CONFIG.smallStarR * scaleFactor, w = r * 2, h = r * 2;
-                const pos = tryPlace(w, h, W / 2 - 20 * scaleFactor, 40 * scaleFactor);
-                const o = { id: `S${i + 1}`, type: 'small', x: pos.x, y: pos.y, w, h, r, demo: true, cancelled: false };
-                objects.push(o); smallStars.push(o);
-            }
-
-            const remaining = Math.max(0, CONFIG.smallStarsCount - CONFIG.demoSmallStars);
-            for (let i = 0; i < remaining; i++) {
-                const r = CONFIG.smallStarR * scaleFactor, w = r * 2, h = r * 2;
-                const areaX = i < remaining / 2 ? 0 : W / 2;
-                const pos = tryPlace(w, h, areaX, W / 2);
-                const o = { id: `S${i + 1 + CONFIG.demoSmallStars}`, type: 'small', x: pos.x, y: pos.y, w, h, r, demo: false, cancelled: false };
-                objects.push(o); smallStars.push(o);
             }
 
             const placeGeneric = (count, propsGen) => {
@@ -604,35 +596,47 @@
                 }
             };
 
-            placeGeneric(CONFIG.largeStarsCount, () => {
-                const r = CONFIG.largeStarR * scaleFactor, w = r * 2, h = r * 2;
-                return {
-                    id: `L${Math.random()}`,
-                    type: 'large', r, w, h
-                };
-            });
-
-            const letters = 'ABCDEFGHIJKLMNOPQRSTVYZ'.split('');
-            placeGeneric(CONFIG.lettersCount, () => {
-                const font = CONFIG.wordFont * scaleFactor;
-                const ch = letters[Math.floor(randBetween(0, letters.length))];
-                const w = font * 0.9, h = font * 1.2;
-                return {
-                    id: `T${Math.random()}`,
-                    type: 'letter',
-                    text: ch, font, w, h
-                };
-            });
-
+            // PRIORITY PLACEMENT: Largest items first
+            // 1. Words
             placeGeneric(CONFIG.wordsCount, () => {
                 const font = CONFIG.wordFont * scaleFactor;
                 const list = LANG[currentLang].wordsList;
                 const t = list[Math.floor(randBetween(0, list.length))];
                 const w = Math.max(20, t.length * font * 0.6), h = font * 1.2;
-                return {
-                    id: `W${Math.random()}`,
-                    type: 'word', text: t, font, w, h
-                };
+                return { id: `W${Math.random()}`, type: 'word', text: t, font, w, h };
+            });
+
+            // 2. Large Stars
+            placeGeneric(CONFIG.largeStarsCount, () => {
+                const r = CONFIG.largeStarR * scaleFactor, w = r * 2, h = r * 2;
+                return { id: `L${Math.random()}`, type: 'large', r, w, h };
+            });
+
+            // 3. Demo Small Stars (Center)
+            for (let i = 0; i < CONFIG.demoSmallStars; i++) {
+                const r = CONFIG.smallStarR * scaleFactor, w = r * 2, h = r * 2;
+                const pos = tryPlace(w, h, W / 2 - 20 * scaleFactor, 40 * scaleFactor);
+                const o = { id: `S${i + 1}`, type: 'small', x: pos.x, y: pos.y, w, h, r, demo: true, cancelled: false };
+                objects.push(o); smallStars.push(o);
+            }
+
+            // 4. Scored Small Stars (Left/Right balanced)
+            const remaining = Math.max(0, CONFIG.smallStarsCount - CONFIG.demoSmallStars);
+            for (let i = 0; i < remaining; i++) {
+                const r = CONFIG.smallStarR * scaleFactor, w = r * 2, h = r * 2;
+                const areaX = i < remaining / 2 ? 0 : W / 2;
+                const pos = tryPlace(w, h, areaX, W / 2);
+                const o = { id: `S${i + 1 + CONFIG.demoSmallStars}`, type: 'small', x: pos.x, y: pos.y, w, h, r, demo: false, cancelled: false };
+                objects.push(o); smallStars.push(o);
+            }
+
+            // 5. Letters (Smallest/Easiest)
+            placeGeneric(CONFIG.lettersCount, () => {
+                const font = CONFIG.wordFont * scaleFactor;
+                const letters = 'ABCDEFGHIJKLMNOPQRSTVYZ'.split('');
+                const ch = letters[Math.floor(randBetween(0, letters.length))];
+                const w = font * 0.9, h = font * 1.2;
+                return { id: `T${Math.random()}`, type: 'letter', text: ch, font, w, h };
             });
         }
 
