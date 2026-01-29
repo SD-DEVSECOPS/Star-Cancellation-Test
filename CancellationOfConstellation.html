@@ -274,7 +274,7 @@
         let testStarted = false, testFinished = false, drawEnabled = false, startTime = null, countdownInterval = null, stats = {};
         let fileCode = "";
         let scaleFactor = 1;
-        let lastW = 0, lastH = 0; // For Resize Tracking
+        let lastW = 0, lastH = 0; // TRACKING DIMENSIONS
         let scrollYBeforeLock = 0;
         let remainingSeconds = 0;
         let pausedAt = null;
@@ -476,7 +476,9 @@
             canvas.style.width = styleW + 'px';
             canvas.style.height = styleH + 'px';
             ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-            scaleFactor = styleW < 600 ? 0.5 : 1;
+
+            // Linear scaleFactor to prevent sudden density jumps
+            scaleFactor = Math.max(0.4, Math.min(1, styleW / 1100));
             return { w: styleW, h: styleH };
         }
 
@@ -495,6 +497,7 @@
         }
 
         function randBetween(a, b) { return a + (b - a) * rng(); }
+        // Added pad parameter for dynamic gap reduction during placement
         function rectOverlap(a, b, pad = CONFIG.minGap * scaleFactor) {
             return !(a.x + a.w + pad <= b.x - pad || a.x - pad >= b.x + b.w + pad || a.y + a.h + pad <= b.y - pad || a.y - pad >= b.y + b.h + pad);
         }
@@ -543,15 +546,35 @@
                 const minX = areaX + pad, maxX = Math.max(minX, areaX + areaW - w - pad);
                 const minY = pad, maxY = Math.max(minY, H - h - pad);
 
-                for (let attempt = 0; attempt < CONFIG.MAX_PLACEMENT_ATTEMPTS; attempt++) {
+                // Try with reducing gap if space is tight
+                let currentGap = CONFIG.minGap * scaleFactor;
+                const levels = 4;
+                const attemptsPerLevel = CONFIG.MAX_PLACEMENT_ATTEMPTS / levels;
+
+                for (let level = 0; level < levels; level++) {
+                    for (let attempt = 0; attempt < attemptsPerLevel; attempt++) {
+                        const x = randBetween(minX, maxX), y = randBetween(minY, maxY);
+                        const c = { x, y, w, h };
+                        let ok = true;
+                        for (const o of objects) {
+                            if (rectOverlap(c, o, currentGap)) { ok = false; break; }
+                        }
+                        if (ok) return c;
+                    }
+                    currentGap *= 0.5; // Reduce gap requirement
+                }
+
+                // Final strict fallback: placement with 0 pad but NO overlaps
+                for (let attempt = 0; attempt < 1000; attempt++) {
                     const x = randBetween(minX, maxX), y = randBetween(minY, maxY);
                     const c = { x, y, w, h };
                     let ok = true;
                     for (const o of objects) {
-                        if (rectOverlap(c, o)) { ok = false; break; }
+                        if (rectOverlap(c, o, 0)) { ok = false; break; }
                     }
                     if (ok) return c;
                 }
+
                 return { x: randBetween(minX, maxX), y: randBetween(minY, maxY), w, h };
             }
 
@@ -574,15 +597,9 @@
             const placeGeneric = (count, propsGen) => {
                 for (let i = 0; i < count; i++) {
                     let o = null;
-                    for (let k = 0; k < CONFIG.MAX_PLACEMENT_ATTEMPTS; k++) {
-                        const pos = propsGen();
-                        o = { ...pos };
-                        let ok = true;
-                        for (const z of objects) {
-                            if (rectOverlap(o, z)) { ok = false; break; }
-                        }
-                        if (ok) break;
-                    }
+                    const props = propsGen();
+                    const pos = tryPlace(props.w, props.h, 0, W);
+                    o = { ...props, ...pos };
                     objects.push(o);
                 }
             };
@@ -591,9 +608,7 @@
                 const r = CONFIG.largeStarR * scaleFactor, w = r * 2, h = r * 2;
                 return {
                     id: `L${Math.random()}`,
-                    type: 'large', r, w, h,
-                    x: randBetween(pad, Math.max(pad, W - w - pad)),
-                    y: randBetween(pad, Math.max(pad, H - h - pad))
+                    type: 'large', r, w, h
                 };
             });
 
@@ -605,9 +620,7 @@
                 return {
                     id: `T${Math.random()}`,
                     type: 'letter',
-                    text: ch, font, w, h,
-                    x: randBetween(pad, Math.max(pad, W - w - pad)),
-                    y: randBetween(pad, Math.max(pad, H - h - pad))
+                    text: ch, font, w, h
                 };
             });
 
@@ -618,9 +631,7 @@
                 const w = Math.max(20, t.length * font * 0.6), h = font * 1.2;
                 return {
                     id: `W${Math.random()}`,
-                    type: 'word', text: t, font, w, h,
-                    x: randBetween(pad, Math.max(pad, W - w - pad)),
-                    y: randBetween(pad, Math.max(pad, H - h - pad))
+                    type: 'word', text: t, font, w, h
                 };
             });
         }
@@ -780,7 +791,7 @@
             document.body.classList.add("noScroll");
 
             const dims = setCanvasSize();
-            lastW = dims.w; lastH = dims.h;
+            lastW = dims.w; lastH = dims.h; // Store for orientation changes
 
             placeObjects();
             render();
@@ -903,7 +914,7 @@
             const rightCancelled = cancelled - leftCancelled;
             const lateralityIndex = cancelled > 0 ? leftCancelled / cancelled : 0;
             let USN = 'None';
-            if (lateralityIndex <= 0.46) USN = 'None (Balanced)'; else if (lateralityIndex >= 0.54) USN = 'Potential USN Detected';
+            if (lateralityIndex <= 0.46) USN = 'Left'; else if (lateralityIndex >= 0.54) USN = 'Right';
 
             const duration = Math.round((Date.now() - startTime - totalPausedMs) / 1000);
             const avgTime = cancelled > 0 ? (duration / cancelled).toFixed(2) : '—';
