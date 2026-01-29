@@ -261,9 +261,9 @@
     <script>
         /* CONFIG */
         const CONFIG = {
-            smallStarsCount: 56, demoSmallStars: 2, smallStarR: 11,
-            largeStarsCount: 52, largeStarR: 20,
-            lettersCount: 13, wordsCount: 10, wordFont: 16,
+            smallStarsCount: 56, demoSmallStars: 2, smallStarR: 15, // Changed from 11 to 15 (30px diameter)
+            largeStarsCount: 52, largeStarR: 30, // Changed from 20 to 30 (60px diameter)
+            lettersCount: 13, wordsCount: 10, wordFont: 22, // Upgraded font for readability
             MAX_PLACEMENT_ATTEMPTS: 10000, minGap: 10,
             MIN_STROKE_LEN: 6, MAX_STROKE_LEN: 115
         };
@@ -477,10 +477,11 @@
             canvas.style.height = styleH + 'px';
             ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-            // Stepped scaling as requested:
+            // Updated stepped scaling logic
             if (styleW >= 800) scaleFactor = 1.0;
-            else if (styleW >= 600) scaleFactor = 0.85;
-            else if (styleW >= 400) scaleFactor = 0.7;
+            else if (styleW >= 600) scaleFactor = 0.9;
+            else if (styleW >= 400) scaleFactor = 0.8;
+            else if (styleW >= 250) scaleFactor = 0.7;
             else scaleFactor = 0.5;
 
             return { w: styleW, h: styleH };
