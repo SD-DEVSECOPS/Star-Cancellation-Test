@@ -516,23 +516,63 @@
             return !(a.x + a.w + gap <= b.x || a.x >= b.x + b.w + gap || a.y + a.h + gap <= b.y || a.y >= b.y + b.h + gap);
         }
         function segLen(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
-        function segIntersects(obj, x1, y1, x2, y2) {
-            if (x1 >= obj.x && x1 <= obj.x + obj.w && y1 >= obj.y && y1 <= obj.y + obj.h) return true;
-            if (x2 >= obj.x && x2 <= obj.x + obj.w && y2 >= obj.y && y2 <= obj.y + obj.h) return true;
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+            if (l2 === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+        }
 
-            const lineLine = (x3, y3, x4, y4) => {
-                const denom = ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
-                if (Math.abs(denom) < 1e-9) return false;
-                const uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
-                const uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
-                return (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1);
+        function lineLineIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+            const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+            if (denom === 0) return false;
+            const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+            const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
+            return (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1);
+        }
+
+        function segIntersects(obj, x1, y1, x2, y2) {
+            if (obj.type !== 'small') return false;
+
+            const cx = obj.x + obj.w / 2, cy = obj.y + obj.h / 2;
+            const spikes = 5, outer = obj.r, inner = obj.r * 0.45;
+            let rot = Math.PI / 2 * 3;
+
+            const vertices = [];
+            for (let i = 0; i < spikes; i++) {
+                vertices.push({ x: cx + Math.cos(rot) * outer, y: cy + Math.sin(rot) * outer });
+                rot += Math.PI / spikes;
+                vertices.push({ x: cx + Math.cos(rot) * inner, y: cy + Math.sin(rot) * inner });
+                rot += Math.PI / spikes;
+            }
+
+            // 1. Precise check: Does the stroke cross any of the 10 edges?
+            for (let i = 0; i < vertices.length; i++) {
+                const p1 = vertices[i];
+                const p2 = vertices[(i + 1) % vertices.length];
+                if (lineLineIntersect(x1, y1, x2, y2, p1.x, p1.y, p2.x, p2.y)) return true;
+            }
+
+            // 2. Buffer/Touch check: Is the stroke VERY close to any vertex (the "tips")?
+            const buffer = 2.5; // 2.5px grace area for "touching"
+            for (const v of vertices) {
+                if (distToSegment(v.x, v.y, x1, y1, x2, y2) <= buffer) return true;
+            }
+
+            // 3. Point-in-polygon check for stroke endpoints
+            const isInside = (px, py) => {
+                let inside = false;
+                for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+                    if (((vertices[i].y > py) !== (vertices[j].y > py)) &&
+                        (px < (vertices[j].x - vertices[i].x) * (py - vertices[i].y) / (vertices[j].y - vertices[i].y) + vertices[i].x)) {
+                        inside = !inside;
+                    }
+                }
+                return inside;
             };
 
-            const rw = obj.w, rh = obj.h;
-            return lineLine(obj.x, obj.y, obj.x, obj.y + rh) ||
-                lineLine(obj.x + rw, obj.y, obj.x + rw, obj.y + rh) ||
-                lineLine(obj.x, obj.y, obj.x + rw, obj.y) ||
-                lineLine(obj.x, obj.y + rh, obj.x + rw, obj.y + rh);
+            return isInside(x1, y1) || isInside(x2, y2);
         }
 
         function getCanvasPoint(e) {
@@ -543,15 +583,6 @@
             const m = Math.floor(sec / 60).toString().padStart(2, '0');
             const s = (sec % 60).toString().padStart(2, '0');
             return `${m}:${s}`;
-        }
-
-        // Distance from point (px, py) to segment (x1, y1) -> (x2, y2)
-        function distToSeg(px, py, x1, y1, x2, y2) {
-            const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
-            if (l2 === 0) return Math.hypot(px - x1, py - y1);
-            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
-            t = Math.max(0, Math.min(1, t));
-            return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
         }
 
         /* PLACEMENT */
@@ -765,10 +796,7 @@
             let hits = [];
             for (const s of smallStars) {
                 if (s.demo) continue;
-                const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-                if (distToSeg(cx, cy, startPoint.x, startPoint.y, end.x, end.y) <= s.r) {
-                    hits.push(s);
-                }
+                if (segIntersects(s, startPoint.x, startPoint.y, end.x, end.y)) hits.push(s);
             }
             if (hits.length > 1) {
                 const sx = startPoint.x, sy = startPoint.y, ex = end.x, ey = end.y;
@@ -1047,7 +1075,7 @@
             exportCanvas.toBlob(b => {
                 const url = URL.createObjectURL(b);
                 const a = document.createElement('a'); a.href = url;
-                a.download = `${fileCode}_${name}_surname_age.png`; a.click();
+                a.download = `${fileCode}_${name}_${surname}_${age}.png`; a.click();
                 URL.revokeObjectURL(url);
             });
         }
