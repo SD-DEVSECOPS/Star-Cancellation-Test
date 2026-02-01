@@ -545,6 +545,15 @@
             return `${m}:${s}`;
         }
 
+        // Distance from point (px, py) to segment (x1, y1) -> (x2, y2)
+        function distToSeg(px, py, x1, y1, x2, y2) {
+            const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+            if (l2 === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+        }
+
         /* PLACEMENT */
         function placeObjects() {
             CONFIG.smallStarsCount = parseInt(document.getElementById('smallStarsInput').value, 10);
@@ -756,7 +765,10 @@
             let hits = [];
             for (const s of smallStars) {
                 if (s.demo) continue;
-                if (segIntersects(s, startPoint.x, startPoint.y, end.x, end.y)) hits.push(s);
+                const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+                if (distToSeg(cx, cy, startPoint.x, startPoint.y, end.x, end.y) <= s.r) {
+                    hits.push(s);
+                }
             }
             if (hits.length > 1) {
                 const sx = startPoint.x, sy = startPoint.y, ex = end.x, ey = end.y;
@@ -1035,7 +1047,7 @@
             exportCanvas.toBlob(b => {
                 const url = URL.createObjectURL(b);
                 const a = document.createElement('a'); a.href = url;
-                a.download = `${fileCode}_${name}_${surname}_${age}.png`; a.click();
+                a.download = `${fileCode}_${name}_surname_age.png`; a.click();
                 URL.revokeObjectURL(url);
             });
         }
