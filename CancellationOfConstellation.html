@@ -211,8 +211,7 @@
                     value="56"></label>
             <label id="labelLargeStars"><span>Big stars:</span> <input id="largeStarsInput" type="number"
                     value="52"></label>
-            <label id="labelLetters"><span>Letters:</span> <input id="lettersInput" type="number"
-                    value="13"></label>
+            <label id="labelLetters"><span>Letters:</span> <input id="lettersInput" type="number" value="13"></label>
             <label id="labelWords"><span>Words:</span> <input id="wordsInput" type="number" value="10"></label>
         </div>
     </div>
@@ -280,6 +279,12 @@
         let pausedAt = null;
         let totalPausedMs = 0;
 
+        // Temporal & Side Tracking
+        let lastStrokeSide = null; // 'left' or 'right'
+        let lastStrokeTime = null; // absolute timestamp
+        let totalDwellLeft = 0;    // ms
+        let totalDwellRight = 0;   // ms
+
         let tempStroke = null;
         let isDrawing = false, startPoint = null;
         let starCancelOrder = [];
@@ -339,8 +344,9 @@
                     avgtime: 'Avg time per correct star',
                     hitLines: 'Lines hitting a small star',
                     missLines: 'Lines missing all small stars',
+                    dwellTitle: 'Cumulative Side Dwell Time',
                     orderTitle: 'Cancellation order (first → last)',
-                    strokeTableHeaders: ['Stroke #', 'Star Names', 'x1', 'y1', 'x2', 'y2', 'Direction', 'Correct']
+                    strokeTableHeaders: ['Stroke #', 'Star Names', 'x1', 'y1', 'x2', 'y2', 'Direction', 'Time (s)', 'Correct']
                 },
                 csv: {
                     name: 'Name', surname: 'Surname', age: 'Age',
@@ -349,8 +355,9 @@
                     laterality: 'LateralityIndex', USN: 'USN',
                     duration: 'DurationSeconds', avg: 'AvgPerCorrect',
                     hitLines: 'HitLines', missLines: 'MissLines',
+                    dwellLeft: 'TotalDwellLeft', dwellRight: 'TotalDwellRight',
                     strokes: 'Strokes',
-                    strokeCols: ['Stroke#', 'StarNames', 'x1', 'y1', 'x2', 'y2', 'Direction', 'Correct']
+                    strokeCols: ['Stroke#', 'StarNames', 'x1', 'y1', 'x2', 'y2', 'Direction', 'TimeSeconds', 'Correct']
                 },
                 dirStrings: { ltr: 'Left->Right', rtl: 'Right->Left', ttb: 'Top->Bottom', btt: 'Bottom->Top' },
                 wordsList: ["SUN", "MOON", "WATER", "HOUSE", "ROAD", "SAND", "BRANCH", "VILLAGE", "BOY", "HAND"]
@@ -382,8 +389,9 @@
                     avgtime: 'Doğru başına ort. süre',
                     hitLines: 'En az 1 küçük yıldız içeren çizgi',
                     missLines: 'Hiç küçük yıldız içermeyen çizgi',
+                    dwellTitle: 'Kümülatif Yan Bekleme Süresi',
                     orderTitle: 'İşaretleme sırası (ilk → son)',
-                    strokeTableHeaders: ['Çizgi #', 'Yıldız Adları', 'x1', 'y1', 'x2', 'y2', 'Yön', 'Doğru']
+                    strokeTableHeaders: ['Çizgi #', 'Yıldız Adları', 'x1', 'y1', 'x2', 'y2', 'Yön', 'Süre (s)', 'Doğru']
                 },
                 csv: {
                     name: 'İsim', surname: 'Soyisim', age: 'Yaş',
@@ -392,8 +400,9 @@
                     laterality: 'LaterallikIndeksi', USN: 'USN',
                     duration: 'SüreSaniye', avg: 'OrtSaniye',
                     hitLines: 'YildizliCizgi', missLines: 'BossCizgi',
+                    dwellLeft: 'ToplamSolBekleme', dwellRight: 'ToplamSagBekleme',
                     strokes: 'Çizgiler',
-                    strokeCols: ['Çizgi#', 'YıldızAdları', 'x1', 'y1', 'x2', 'y2', 'Yön', 'Doğru']
+                    strokeCols: ['Çizgi#', 'YıldızAdları', 'x1', 'y1', 'x2', 'y2', 'Yön', 'SüreSaniye', 'Doğru']
                 },
                 dirStrings: { ltr: 'Sol→Sağ', rtl: 'Sağ→Sol', ttb: 'Üst→Alt', btt: 'Alt→Üst' },
                 wordsList: ["TEN", "TUT", "GÜN", "KIZ", "OKU", "ADAM", "KEK", "KOL", "KAR", "STAR"]
@@ -425,8 +434,9 @@
                     avgtime: 'Durchschn. Zeit pro Treffer',
                     hitLines: 'Linien mit ≥1 kleinem Stern',
                     missLines: 'Linien ohne kleinen Stern',
+                    dwellTitle: 'Kumulative Seitenverweilzeit',
                     orderTitle: 'Markierungsreihenfolge (erst → zuletzt)',
-                    strokeTableHeaders: ['Strich #', 'Sternnamen', 'x1', 'y1', 'x2', 'y2', 'Richtung', 'Korrekt']
+                    strokeTableHeaders: ['Strich #', 'Sternnamen', 'x1', 'y1', 'x2', 'y2', 'Richtung', 'Zeit (s)', 'Korrekt']
                 },
                 csv: {
                     name: 'Name', surname: 'Nachname', age: 'Alter',
@@ -435,8 +445,9 @@
                     laterality: 'Lateralisierungsindex', USN: 'USN',
                     duration: 'DauerSekunden', avg: 'SchnittProTreffer',
                     hitLines: 'TrefferLinien', missLines: 'FehlLinien',
+                    dwellLeft: 'GesamtLinksVerweilen', dwellRight: 'GesamtRechtsVerweilen',
                     strokes: 'Striche',
-                    strokeCols: ['Strich#', 'Sternnamen', 'x1', 'y1', 'x2', 'y2', 'Richtung', 'Korrekt']
+                    strokeCols: ['Strich#', 'Sternnamen', 'x1', 'y1', 'x2', 'y2', 'Richtung', 'ZeitSekunden', 'Korrekt']
                 },
                 dirStrings: { ltr: 'Links→Rechts', rtl: 'Rechts→Links', ttb: 'Oben→Unten', btt: 'Unten→Oben' },
                 wordsList: ["SONNE", "MOND", "WASSER", "HAUS", "STRASSE", "SAND", "AST", "DORF", "JUNGE", "HAND"]
@@ -624,7 +635,7 @@
             const remaining = Math.max(0, CONFIG.smallStarsCount - CONFIG.demoSmallStars);
             for (let i = 0; i < remaining; i++) {
                 const r = CONFIG.smallStarR * scaleFactor, w = r * 2, h = r * 2;
-                const areaX = i < remaining / 2 ? 0: W / 2;
+                const areaX = i < remaining / 2 ? 0 : W / 2;
                 const pos = tryPlace(w, h, areaX, W / 2);
                 const o = { id: `S${i + 1 + CONFIG.demoSmallStars}`, type: 'small', x: pos.x, y: pos.y, w, h, r, demo: false, cancelled: false };
                 objects.push(o); smallStars.push(o);
@@ -663,7 +674,7 @@
                 const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
 
                 if (o.type === 'small') {
-                    let color = o.demo ? '#888': '#000';
+                    let color = o.demo ? '#888' : '#000';
                     if (testFinished) {
                         if (o.cancelled) color = '#000';
                         else if (!o.demo) color = '#d9534f';
@@ -696,7 +707,7 @@
             }
 
             strokes.forEach((s, idx) => {
-                ctx.strokeStyle = testFinished ? (s.starIds.length > 0 ? '#2eb82e': '#d9534f'): '#007acc';
+                ctx.strokeStyle = testFinished ? (s.starIds.length > 0 ? '#2eb82e' : '#d9534f') : '#007acc';
                 ctx.lineWidth = 3;
                 ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
                 if (testFinished) {
@@ -713,7 +724,7 @@
 
         function computeDirection(x1, y1, x2, y2) {
             const dx = x2 - x1, dy = y2 - y1;
-            const code = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'ltr': 'rtl'): (dy > 0 ? 'ttb': 'btt');
+            const code = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'ltr' : 'rtl') : (dy > 0 ? 'ttb' : 'btt');
             return { code, text: LANG[currentLang].dirStrings[code] };
         }
 
@@ -765,10 +776,24 @@
             }
 
             const dir = computeDirection(startPoint.x, startPoint.y, end.x, end.y);
+            const now = Date.now();
+            const timeFromStart = ((now - startTime - totalPausedMs) / 1000).toFixed(2);
+
+            // Side-dwell logic
+            const currentSide = ((startPoint.x + end.x) / 2 < (canvas.width / DPR) / 2) ? 'left' : 'right';
+            if (lastStrokeSide === currentSide && lastStrokeTime !== null) {
+                const diff = now - lastStrokeTime;
+                if (currentSide === 'left') totalDwellLeft += diff;
+                else totalDwellRight += diff;
+            }
+            lastStrokeSide = currentSide;
+            lastStrokeTime = now;
+
             strokes.push({
                 x1: startPoint.x, y1: startPoint.y, x2: end.x, y2: end.y,
                 starIds: hitIds, starCorrect: hitIds.length > 0,
-                directionCode: dir.code, directionText: dir.text, timestamp: Date.now()
+                directionCode: dir.code, directionText: dir.text,
+                timestamp: now, timeFromStart: timeFromStart
             });
             tempStroke = null; render();
         }
@@ -802,6 +827,10 @@
 
             totalPausedMs = 0;
             pausedAt = null;
+            lastStrokeSide = null;
+            lastStrokeTime = null;
+            totalDwellLeft = 0;
+            totalDwellRight = 0;
             document.body.style.top = `-${scrollYBeforeLock}px`;
 
             document.getElementById('finishBtn').disabled = false;
@@ -916,19 +945,21 @@
             const cancelled = scored.filter(s => s.cancelled).length;
             const leftCancelled = scored.filter(s => s.cancelled && (s.x + s.w / 2) < (canvas.width / DPR) / 2).length;
             const rightCancelled = cancelled - leftCancelled;
-            const lateralityIndex = cancelled > 0 ? leftCancelled / cancelled: 0;
+            const lateralityIndex = cancelled > 0 ? leftCancelled / cancelled : 0;
             let USN = 'None';
             if (lateralityIndex <= 0.46) USN = 'Left'; else if (lateralityIndex >= 0.54) USN = 'Right';
 
             const duration = Math.round((Date.now() - startTime - totalPausedMs) / 1000);
-            const avgTime = cancelled > 0 ? (duration / cancelled).toFixed(2): '—';
+            const avgTime = cancelled > 0 ? (duration / cancelled).toFixed(2) : '—';
             const hitLines = strokes.filter(s => s.starCorrect).length;
             const missLines = strokes.length - hitLines;
 
             stats = {
                 totalSmall: smallStars.length, demoCount: smallStars.filter(s => s.demo).length,
                 maxScore: scored.length, cancelled, cancelledLeft: leftCancelled, cancelledRight: rightCancelled,
-                lateralityIndex, USN, durationSeconds: duration, avgTime, hitLines, missLines
+                lateralityIndex, USN, durationSeconds: duration, avgTime, hitLines, missLines,
+                dwellLeft: (totalDwellLeft / 1000).toFixed(2),
+                dwellRight: (totalDwellRight / 1000).toFixed(2)
             };
 
             const r = LANG[currentLang].results;
@@ -940,14 +971,16 @@
                 ${r.duration}: ${duration}s<br>
                 ${r.avgtime}: ${avgTime}s<br>
                 ${r.hitLines}: ${hitLines}<br>
-                ${r.missLines}: ${missLines}<br>`;
+                ${r.missLines}: ${missLines}<br>
+                <strong>${r.dwellTitle}:</strong><br>
+                ${stats.dwellLeft}s | ${stats.dwellRight}s<br>`;
 
-            html += `<div class="starOrder"><strong>${r.orderTitle}:</strong> ` + (starCancelOrder.length ? starCancelOrder.join(' → '): '—') + `</div>`;
+            html += `<div class="starOrder"><strong>${r.orderTitle}:</strong> ` + (starCancelOrder.length ? starCancelOrder.join(' → ') : '—') + `</div>`;
             html += `<div style="overflow:auto"><table><thead><tr>`;
             r.strokeTableHeaders.forEach(h => html += `<th>${h}</th>`);
             html += `</tr></thead><tbody>`;
             strokes.forEach((s, i) => {
-                html += `<tr><td>${i + 1}</td><td>${s.starIds.join('|')}</td><td>${Math.round(s.x1)}</td><td>${Math.round(s.y1)}</td><td>${Math.round(s.x2)}</td><td>${Math.round(s.y2)}</td><td>${s.directionText}</td><td>${s.starCorrect ? 'True': 'False'}</td></tr>`;
+                html += `<tr><td>${i + 1}</td><td>${s.starIds.join('|')}</td><td>${Math.round(s.x1)}</td><td>${Math.round(s.y1)}</td><td>${Math.round(s.x2)}</td><td>${Math.round(s.y2)}</td><td>${s.directionText}</td><td>${s.timeFromStart}</td><td>${s.starCorrect ? 'True' : 'False'}</td></tr>`;
             });
             html += `</tbody></table></div>`;
             document.getElementById('finalStats').innerHTML = html;
@@ -973,10 +1006,11 @@
             rows.push([c.cancelled, stats.cancelled], [c.left, stats.cancelledLeft], [c.right, stats.cancelledRight]);
             rows.push([c.laterality, stats.lateralityIndex], [c.USN, stats.USN]);
             rows.push([c.duration, stats.durationSeconds], [c.avg, stats.avgTime]);
-            rows.push([c.hitLines, stats.hitLines], [c.missLines, stats.missLines], [], [c.strokes], c.strokeCols);
+            rows.push([c.hitLines, stats.hitLines], [c.missLines, stats.missLines]);
+            rows.push([c.dwellLeft, stats.dwellLeft], [c.dwellRight, stats.dwellRight], [], [c.strokes], c.strokeCols);
 
             strokes.forEach((s, i) => {
-                rows.push([i + 1, s.starIds.join('|'), Math.round(s.x1), Math.round(s.y1), Math.round(s.x2), Math.round(s.y2), s.directionText, s.starCorrect ? 'True': 'False']);
+                rows.push([i + 1, s.starIds.join('|'), Math.round(s.x1), Math.round(s.y1), Math.round(s.x2), Math.round(s.y2), s.directionText, s.timeFromStart, s.starCorrect ? 'True' : 'False']);
             });
             rows.push([], [LANG[currentLang].results.orderTitle, starCancelOrder.join(' → ')]);
 
@@ -1051,7 +1085,7 @@
             strokes.forEach((s, i) => {
                 // Fix: scaleFactor consistency for mobile
                 pctx.lineWidth = 3 * scaleFactor;
-                pctx.strokeStyle = s.starCorrect ? "#2eb82e": "#d9534f";
+                pctx.strokeStyle = s.starCorrect ? "#2eb82e" : "#d9534f";
 
                 pctx.beginPath();
                 pctx.moveTo(s.x1, s.y1);
@@ -1144,4 +1178,3 @@
 </body>
 
 </html>
-
