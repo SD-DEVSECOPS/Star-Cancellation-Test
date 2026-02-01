@@ -26,6 +26,8 @@ The system automatically records:
 - **Cancellation order (first → last)**  
 - **Stroke-by-stroke metrics** (Coordinates, timestamps, and length)
 - **Stroke direction detection** (Instant detection of drawing orientation)
+- **Side-Dwell Quantification** (Cumulative time spent on the left vs. right hemispace)
+- **Per-Stroke Timing** (Precise seconds-from-start for every motor action)
 - Left/right spatial distribution  
 - **Laterality Index** & **USN classification** (Left-neglect, Right-neglect, or None)
 - Full statistical global summary  
@@ -57,6 +59,12 @@ To ensure the digital test remains accurately correlated with paper-and-pencil v
 The tool uses a **Geometric Line-Rectangle Intersection** algorithm rather than simple point sampling.
 - **Accuracy**: Fast swipes or partial detections are registered with 100% mathematical precision.
 - **Robustness**: Even if a stroke moves quickly across the screen, it will not "skip" over stars.
+
+### Advanced Temporal & Analysis Logic
+- **Advanced Side-Dwell Tracking**: The tool calculates the **Cumulative Dwell Time** for both the left and right hemifields. If a participant performs consecutive strokes on the same side, the interval between those strokes is aggregated.
+- **Stroke-Centric Analysis (Multi-Target Handling)**: In cases where a participant cancels multiple stars with a single continuous stroke, the tool treats the action as a **singular motor unit**. 
+    - *Temporal Atomicity*: Since the stroke has a defined start and end timestamp, all targets cancelled within that interval are attributed to a single temporal event.
+    - *Geometric Midpoint Classification*: The spatial category of a multi-target stroke is determined by its geographic midpoint. This prioritizes the "center of gravity" of the participant's intent and provides a robust metric for **spatial persistency** (the tendency to remain and operate within a specific hemispatial field).
 
 ### Deterministic Placement Engine
 A multi-phase placement logic guarantees **zero object overlap**:
